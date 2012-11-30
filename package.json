@@ -10,7 +10,7 @@
     "main": "Melted",
     "repository": {
         "type": "git",
-        "url": "https://github.com/inaes-tic/node-melted"
+        "url": "https://github.com/inaes-tic/melted-node"
     },
     "keywords": [
         "client",
