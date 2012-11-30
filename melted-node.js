@@ -1,7 +1,7 @@
 var net = require('net'), 
 	Q = require('q');
 
-function Melted(opts) {
+function melted_node(opts) {
     var self = this;
 
 	this.server     = false;
@@ -12,7 +12,7 @@ function Melted(opts) {
 	this.commands   = [];
 	this.processing = false;
 
-	Melted.prototype.connect = function() {
+	melted_node.prototype.connect = function() {
         console.log("MELTED: [connect] Invoked");
 
 		self.connecting = true;
@@ -101,7 +101,7 @@ function Melted(opts) {
 		return deferred.promise;
 	};
 	
-	Melted.prototype.sendPromisedCommand = function(command, expected) {
+	melted_node.prototype.sendPromisedCommand = function(command, expected) {
 	    console.log("MELTED: [sendPromisedCommand] Invoked for command: " + command + ", expected: " + expected);
 	    
 	    var deferred = Q.defer();
@@ -127,7 +127,7 @@ function Melted(opts) {
 		return deferred.promise;
 	};
 
-	Melted.prototype.sendCommand = function(command, expected, onSuccess, onError) {
+	melted_node.prototype.sendCommand = function(command, expected, onSuccess, onError) {
 		console.log("MELTED: [sendCommand] Invoked for command: " + command + ", expected: " + expected);
 		
 		addCommandToQueue(command, expected, onSuccess, onError);
@@ -251,6 +251,6 @@ function Melted(opts) {
 };
 
 exports = module.exports = function(args) {
-    var mlt = new Melted(args);
+    var mlt = new melted_node(args);
     return mlt;
 }

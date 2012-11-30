@@ -1,7 +1,7 @@
 var assert = require("assert");
 
-var Melted = require('./Melted');
-var mlt = new Melted();
+var melted_node = require('./melted-node');
+var mlt = new melted_node();
 
 describe('connects', function(){
 	before(function(done) {
