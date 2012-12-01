@@ -210,7 +210,6 @@ function melted_node(opts) {
 	};
 
 	function expect(expected, command, prefix) {
-	    // Aca hay un hack medio feo por como manejan entre net y melted la comunicacion, para poder obtener respuestas de mas de una linea...
 		console.log("melted-node: [expect] Invoked to expect: " + expected);
 		
 		var deferred = Q.defer();
@@ -223,26 +222,31 @@ function melted_node(opts) {
 			if (resp.length == 0) {
 			    console.log("melted-node: [expect] Received empty string, retrying");
 			    deferred.resolve(expect(expected, command, prefix));
-			} else if (resp == "402 Argument missing") {
-			    var pfx = prefix.replace(/\r\n/g, "");
-			    if ((pfx.substring(0, 1) == "2") || (pfx == "100 VTR Ready"))
-			    deferred.resolve(prefix);
-			else
-			    deferred.reject(prefix);
 			} else {
 			    if (prefix == undefined) {
 			        if (resp.substring(0, expected.length) == expected) {
-			            console.log("RESPONSE AS EXPECTED");
-				    deferred.resolve(expect(expected, command, data));
-				} else {
-		                console.error("melted-node: [expect] Expected '" + expected + "' but got '" + resp + "' !");
-					    deferred.resolve(expect(expected, command, data));
+			            console.log("melted-node: [expect] Received expected response");
+				        deferred.resolve(expect(expected, command, data));
+				    } else {
+	                    console.error("melted-node: [expect] Expected '" + expected + "' but got '" + resp + "' !");
+				        deferred.resolve(expect(expected, command, data));
+			        }
+			        //HACK: to know when the response ends, we send a fake command and wait for its response
+			        self.server.write("get\n");
+			    } else {
+			        //HACK: here we read the response of the fake command sent above to see if response ended or not
+			        if (resp == "402 Argument missing") {
+			            //HACK: if we received the expected response to the fake command, response of the real command ended
+			            var pfx = prefix.replace(/\r\n/g, "");
+			            if ((pfx.substring(0, 1) == "2") || (pfx == "100 VTR Ready"))
+				    deferred.resolve(prefix);
+			            else
+			                deferred.reject(prefix);
+			        } else {
+			            //HACK: if response is other than the expected for the fake command, we continue listening
+			            deferred.resolve(expect(expected, command, prefix + data));
+		            }
 			    }
-			    //HACK
-			    self.server.write("get\n");
-			} else {
-			    deferred.resolve(expect(expected, command, prefix + data));
-			}
 			}
         });
 		return deferred.promise;
