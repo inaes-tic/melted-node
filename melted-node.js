@@ -13,7 +13,7 @@ function melted_node(opts) {
 	this.processing = false;
 
 	melted_node.prototype.connect = function() {
-        console.log("MELTED: [connect] Invoked");
+        console.log("melted-node: [connect] Invoked");
 
 		self.connecting = true;
 
@@ -27,7 +27,7 @@ function melted_node(opts) {
           Emitted when a socket connection is successfully established. See connect().
         */
 		self.server.on("connect", function() {
-            console.log("MELTED: [connect] Connected to Melted Server" );
+            console.log("melted-node: [connect] Connected to Melted Server" );
 			deferred.resolve(expect("100 VTR Ready").then(function() {
                 self.connected = true;
 				self.connecting = false;
@@ -60,7 +60,7 @@ function melted_node(opts) {
         */
         self.server.on('end', function () {
             if (self.pending.length)
-                console.error ("MELTED: [connect] Got 'end' but still data pending");
+                console.error ("melted-node: [connect] Got 'end' but still data pending");
             self.connected = false;
         });
 
@@ -84,7 +84,7 @@ function melted_node(opts) {
           directly following self event.
         */
 		self.server.on('error', function(err) {
-            console.log("MELTED: [connect] Could not connect to Melted Server: " + err);
+            console.log("melted-node: [connect] Could not connect to Melted Server: " + err);
         });
 
         /*
@@ -102,7 +102,7 @@ function melted_node(opts) {
 	};
 	
 	melted_node.prototype.sendPromisedCommand = function(command, expected) {
-	    console.log("MELTED: [sendPromisedCommand] Invoked for command: " + command + ", expected: " + expected);
+	    console.log("melted-node: [sendPromisedCommand] Invoked for command: " + command + ", expected: " + expected);
 	    
 	    var deferred = Q.defer();
 	    
@@ -128,7 +128,7 @@ function melted_node(opts) {
 	};
 
 	melted_node.prototype.sendCommand = function(command, expected, onSuccess, onError) {
-		console.log("MELTED: [sendCommand] Invoked for command: " + command + ", expected: " + expected);
+		console.log("melted-node: [sendCommand] Invoked for command: " + command + ", expected: " + expected);
 		
 		addCommandToQueue(command, expected, onSuccess, onError);
 
@@ -144,13 +144,13 @@ function melted_node(opts) {
 	function addPendingData (data) {
         if (data.match(/[^\s]/)) {
             self.pending.push(data);
-            console.warn("MELTED: [addPendingData] Got " + self.pending.length + " data pending.");
-            console.warn("MELTED: [addPendingData] Data: " + data);
+            console.warn("melted-node: [addPendingData] Got " + self.pending.length + " data pending.");
+            console.warn("melted-node: [addPendingData] Data: " + data);
         }
     };
 
 	function processQueue() {
-		console.log("MELTED: [processQueue] Invoked"); 
+		console.log("melted-node: [processQueue] Invoked"); 
 
 		if (!self.processing)
 			self.processing = true;
@@ -160,33 +160,33 @@ function melted_node(opts) {
 		if (command !== undefined) {
 		    var onSuccess = command[2];
     		var onError = command[3];
-			console.log("MELTED: [processQueue] Processing command: " + command[0]);
+			console.log("melted-node: [processQueue] Processing command: " + command[0]);
 			var result = _sendCommand(command[0], command[1]);
 
 			result.then(function() {
 			    if (onSuccess !== undefined) {
-    			    console.log("MELTED: [processQueue] Calling success callback: " + onSuccess.name);
+    			    console.log("melted-node: [processQueue] Calling success callback: " + onSuccess.name);
     			    onSuccess(result);
 			    }
 				processQueue();
 			}, function(error) {
-				var err = new Error("MELTED: [processQueue] Error processing command: " + command[0] + " [" + error + "]");
+				var err = new Error("melted-node: [processQueue] Error processing command: " + command[0] + " [" + error + "]");
 				console.error(err);
 				self.errors.push(err);
 				processQueue();
 				if (onError !== undefined) {
-				    console.log("MELTED: [processQueue] Calling error callback: " + onError.name);
+				    console.log("melted-node: [processQueue] Calling error callback: " + onError.name);
     				onError(error);
 				}
 			});		
 		} else {
-			console.log("MELTED: [processQueue] Nothing else to process");
+			console.log("melted-node: [processQueue] Nothing else to process");
 			self.processing = false;
 		}
 	}
 
 	function addCommandToQueue(command, expected, onSuccess, onError) {
-		console.log("MELTED: [addCommandToQueue] Invoked for command: " + command + ", expected: " + expected);
+		console.log("melted-node: [addCommandToQueue] Invoked for command: " + command + ", expected: " + expected);
 		var com = [];
 		com[0] = command;
 		com[1] = expected;
@@ -196,7 +196,7 @@ function melted_node(opts) {
 	}
 
 	function _sendCommand(command, expected) {
-		console.log("MELTED: [_sendCommand] Sending command: " + command);
+		console.log("melted-node: [_sendCommand] Sending command: " + command);
 
 		var deferred = Q.defer();
 
@@ -211,17 +211,17 @@ function melted_node(opts) {
 
 	function expect(expected, command, prefix) {
 	    // Aca hay un hack medio feo por como manejan entre net y melted la comunicacion, para poder obtener respuestas de mas de una linea...
-		console.log("MELTED: [expect] Invoked to expect: " + expected);
+		console.log("melted-node: [expect] Invoked to expect: " + expected);
 		
 		var deferred = Q.defer();
 		self.server.removeListener('data', addPendingData);
 		self.server.once('data', function(data) {
 			self.server.addListener('data', addPendingData);
-			console.log("MELTED: [expect] Received: " + data);
+			console.log("melted-node: [expect] Received: " + data);
             var resp = data.replace(/\r\n/g, "");
-			console.log("MELTED: [expect] Formatted Response: " + resp);
+			console.log("melted-node: [expect] Formatted Response: " + resp);
 			if (resp.length == 0) {
-			    console.log("MELTED: [expect] Received empty string, retrying");
+			    console.log("melted-node: [expect] Received empty string, retrying");
 			    deferred.resolve(expect(expected, command, prefix));
 			} else if (resp == "402 Argument missing") {
 			    var pfx = prefix.replace(/\r\n/g, "");
@@ -235,7 +235,7 @@ function melted_node(opts) {
 			            console.log("RESPONSE AS EXPECTED");
 				    deferred.resolve(expect(expected, command, data));
 				} else {
-		                console.error("MELTED: [expect] Expected '" + expected + "' but got '" + resp + "' !");
+		                console.error("melted-node: [expect] Expected '" + expected + "' but got '" + resp + "' !");
 					    deferred.resolve(expect(expected, command, data));
 			    }
 			    //HACK
