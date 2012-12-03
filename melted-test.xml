@@ -1,0 +1,28 @@
+<mlt>
+    <producer id="producer0">
+        <property name="resource">/home/jmrunge/Downloads/Gardel/Mancha-De-Rolando-Antes.mp4</property>
+    </producer>
+    <!--producer id="producer1">
+        <property name="resource">clip2.dv</property>
+    </producer>
+    <playlist id="playlist0">
+        <entry producer="producer0" in="0" out="2999"/>
+        <blank length="1000"/>
+        <entry producer="producer0" in="3000" out="6999"/>
+    </playlist>
+    <playlist id="playlist1">
+        <blank length="3000"/>
+        <entry producer="producer1" in="0" out="999"/>
+    </playlist-->
+    <tractor id="tractor0">
+        <!--multitrack>
+            <track producer="playlist0"/>
+            <track producer="playlist1"/>
+        </multitrack-->
+        <track producer="producer0" />
+        <filter>
+            <property name="track">0</property>
+            <property name="mlt_service">greyscale</property>
+        </filter>
+    </tractor>
+</mlt>
