@@ -149,8 +149,14 @@ describe('xml', function() {
                 done();
             }, 1000);
         })
-        it('--should return 1 because of previous test', function(){
-            assert.equal (mlt.errors.length, 1);
+        it('--should return 3 because of previous test', function(){
+            assert.equal(mlt.errors.length, 3);
+        })
+        after(function(done) {
+            setTimeout(function() {
+                mlt.sendCommand("stop u0");
+                done();
+            }, 2500);
         })
     })
 })
