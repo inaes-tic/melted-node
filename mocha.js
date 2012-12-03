@@ -34,7 +34,7 @@ describe('commands', function(){
             mlt.sendCommand("no_such_command in my town", "200 OK");
             mlt.sendCommand("load u0 /home/jmrunge/Downloads/Gardel/Mancha-De-Rolando-Antes.mp4", "200 OK");
             mlt.sendCommand("play u0", "200 OK");
-            mlt.sendCommand("apnd u0 /home/jmrunge/mbc-playout/mlt/logo.jpg", "200 OK");
+            mlt.sendCommand("apnd u0 /home/jmrunge/melted-node/logo.jpg", "200 OK");
 			setTimeout(function() {
 	            done();
 			}, 1000);
