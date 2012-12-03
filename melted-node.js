@@ -239,7 +239,7 @@ function melted_node(opts) {
 			            //HACK: if we received the expected response to the fake command, response of the real command ended
 			            var pfx = prefix.replace(/\r\n/g, "");
 			            if ((pfx.substring(0, 1) == "2") || (pfx == "100 VTR Ready"))
-				    deferred.resolve(prefix);
+				            deferred.resolve(prefix);
 			            else
 			                deferred.reject(prefix);
 			        } else {
