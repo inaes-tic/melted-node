@@ -1,7 +1,7 @@
 var net = require('net'), 
     Q = require('q');
 
-function melted_node(opts) {
+function melted_node(host, port) {
     var self = this;
 
     this.server     = false;
@@ -11,6 +11,13 @@ function melted_node(opts) {
     this.connecting = false;
     this.commands   = [];
     this.processing = false;
+    this.host       = host;
+    this.port       = port;
+    
+    if (this.host == undefined)
+        this.host = 'localhost';
+    if (this.port == undefined)
+        this.port = 5250;
 
     melted_node.prototype.connect = function() {
         console.log("melted-node: [connect] Invoked");
@@ -19,7 +26,7 @@ function melted_node(opts) {
 
         var deferred = Q.defer();
 
-        self.server = new net.createConnection(5250);
+        self.server = new net.createConnection(this.port, this.host);
         self.server.setEncoding('ascii');
 
         /*
@@ -254,7 +261,7 @@ function melted_node(opts) {
 
 };
 
-exports = module.exports = function(args) {
-    var mlt = new melted_node(args);
+exports = module.exports = function(host, port) {
+    var mlt = new melted_node(host, port);
     return mlt;
 }

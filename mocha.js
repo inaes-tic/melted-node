@@ -1,7 +1,7 @@
 var assert = require("assert");
 
 var melted_node = require('./melted-node');
-var mlt = new melted_node();
+var mlt = new melted_node('localhost', 5250);
 
 describe('connects', function(){
     before(function(done) {
