@@ -32,9 +32,9 @@ describe('commands', function(){
     describe('#bad and good commands', function(){
         before(function(done) {
             mlt.sendCommand("no_such_command in my town", "200 OK");
-            mlt.sendCommand("load u0 /home/jmrunge/Downloads/Gardel/Mancha-De-Rolando-Antes.mp4", "200 OK");
+            mlt.sendCommand("load u0 /home/jmrunge/Data/Descargas/Backyardigans---El-Fuerte-de-Nieve.rmvb", "200 OK");
             mlt.sendCommand("play u0", "200 OK");
-            mlt.sendCommand("apnd u0 /home/jmrunge/melted-node/logo.jpg", "200 OK");
+            mlt.sendCommand("apnd u0 /home/jmrunge/mbc/melted-node/logo.jpg", "200 OK");
             setTimeout(function() {
                 done();
             }, 1000);
@@ -143,7 +143,7 @@ describe('promised command', function() {
 describe('xml', function() {
     describe('#add xml file with filter', function(){
         before(function(done) {
-            mlt.sendCommand("load u0 /home/jmrunge/melted-node/melted-test.xml", "200 OK");
+            mlt.sendCommand("load u0 /home/jmrunge/mbc/melted-node/melted-test.xml", "200 OK");
             mlt.sendCommand("play u0", "200 OK");
             setTimeout(function() {
                 done();
@@ -156,7 +156,7 @@ describe('xml', function() {
             setTimeout(function() {
                 mlt.sendCommand("stop u0");
                 done();
-            }, 2500);
+            }, 1500);
         })
     })
 })
