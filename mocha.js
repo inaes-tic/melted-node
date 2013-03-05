@@ -156,7 +156,7 @@ describe('xml', function() {
             setTimeout(function() {
                 mlt.sendCommand("stop u0");
                 done();
-            }, 1500);
+            }, 2500);
         })
     })
 })
