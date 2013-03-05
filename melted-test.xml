@@ -1,6 +1,6 @@
 <mlt>
     <producer id="producer0">
-        <property name="resource">/home/jmrunge/Downloads/Gardel/Mancha-De-Rolando-Antes.mp4</property>
+        <property name="resource">/home/jmrunge/Data/Descargas/Backyardigans---El-Fuerte-de-Nieve.rmvb</property>
     </producer>
     <!--producer id="producer1">
         <property name="resource">clip2.dv</property>
