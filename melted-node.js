@@ -14,9 +14,9 @@ function melted_node(host, port) {
     this.host       = host;
     this.port       = port;
     
-    if (this.host == undefined)
+    if (this.host === undefined)
         this.host = 'localhost';
-    if (this.port == undefined)
+    if (this.port === undefined)
         this.port = 5250;
 
     melted_node.prototype.connect = function() {
@@ -119,7 +119,7 @@ function melted_node(host, port) {
 
         var errorFunction = function(error) {
             deferred.reject(error);
-        }
+        };
 
         addCommandToQueue(command, expected, successFunction, errorFunction);
 
@@ -226,12 +226,12 @@ function melted_node(host, port) {
             console.log("melted-node: [expect] Received: " + data);
             var resp = data.replace(/\r\n/g, "");
             console.log("melted-node: [expect] Formatted Response: " + resp);
-            if (resp.length == 0) {
+            if (resp.length === 0) {
                 console.log("melted-node: [expect] Received empty string, retrying");
                 deferred.resolve(expect(expected, command, prefix));
             } else {
-                if (prefix == undefined) {
-                    if (resp.substring(0, expected.length) == expected) {
+                if (prefix === undefined) {
+                    if (resp.substring(0, expected.length) === expected) {
                         console.log("melted-node: [expect] Received expected response");
                         deferred.resolve(expect(expected, command, data));
                     } else {
@@ -242,10 +242,10 @@ function melted_node(host, port) {
                     self.server.write("get\n");
                 } else {
                     //HACK: here we read the response of the fake command sent above to see if response ended or not
-                    if (resp == "402 Argument missing") {
+                    if (resp === "402 Argument missing") {
                         //HACK: if we received the expected response to the fake command, response of the real command ended
                         var pfx = prefix.replace(/\r\n/g, "");
-                        if ((pfx.substring(0, 1) == "2") || (pfx == "100 VTR Ready"))
+                        if ((pfx.substring(0, 1) === "2") || (pfx === "100 VTR Ready"))
                             deferred.resolve(prefix);
                         else
                             deferred.reject(prefix);
@@ -264,4 +264,4 @@ function melted_node(host, port) {
 exports = module.exports = function(host, port) {
     var mlt = new melted_node(host, port);
     return mlt;
-}
+};
