@@ -8,6 +8,8 @@ describe('connects', function(){
         var result = mlt.connect();
         result.then(function() {
             done();
+        }, function(err) {
+            console.error("Error: " + err);
         });	
     })
     describe('#connected', function(){
