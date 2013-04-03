@@ -1,7 +1,7 @@
 {
     "name": "melted-node",
     "description": "a library to interface with the Melted playout server",
-    "version": "0.0.2",
+    "version": "0.0.3",
     "author": "Juan Martin Runge <jmrunge@gmail.com>",
     "contributors": [ "Niv Sardi <xaiki@inaes.gob.ar>", "hatcsh"],
     "scripts": {
