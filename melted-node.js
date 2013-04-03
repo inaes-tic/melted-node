@@ -92,6 +92,8 @@ function melted_node(host, port) {
         */
         self.server.on('error', function(err) {
             console.log("melted-node: [connect] Could not connect to Melted Server: " + err);
+            self.connecting =  false;
+            deferred.reject(err);
         });
 
         /*
