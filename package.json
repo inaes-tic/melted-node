@@ -5,7 +5,7 @@
     "author": "Juan Martin Runge <jmrunge@gmail.com>",
     "contributors": [ "Niv Sardi <xaiki@inaes.gob.ar>", "hatcsh"],
     "scripts": {
-        "test": "./node_modules/.bin/mocha --reporter list --timeout 3000 mocha.js"
+        "test": "./node_modules/.bin/mocha --reporter spec --timeout 0 mocha.js"
     },
     "main": "melted-node",
     "repository": {
