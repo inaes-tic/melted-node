@@ -225,13 +225,22 @@ function melted_node(host, port) {
         self.server.removeListener('data', addPendingData);
         self.server.once('data', function(data) {
             self.server.addListener('data', addPendingData);
-			console.log("melted-node: [expect] Received: " + data + " Expected:" + expected);
-			var end_resp = false;
-			if (prefix!=undefined) data = prefix + "\r"+"\n" + data;
-			var datax = data.split("\r\n");
-			for(i=0,data="",sep="";i<datax.length;i++)	{ 	if (datax[i]!="") { data = data + sep + datax[i]; sep = "\r" + "\n"; } 
-					if (datax[i]=="402 Argument missing") { end_resp =  true; } }
-			resp = data.replace(/\r\n/g, "");
+            console.log("melted-node: [expect] Received: " + data + " Expected:" + expected);
+            /* FIX for Issue 1 */
+            var end_resp = false;
+            if (prefix !== undefined) 
+                data = prefix + "\r" + "\n" + data;
+            var datax = data.split("\r\n");
+            for(i = 0, data = "", sep = ""; i < datax.length; i++) {
+                if (datax[i] !== "") { 
+                    data = data + sep + datax[i]; 
+                    sep = "\r" + "\n"; 
+                } 
+                if (datax[i] === "402 Argument missing") { 
+                    end_resp =  true; 
+                } 
+            }
+            /* END FIX for Issue 1 */
             console.log("melted-node: [expect] Formatted Response: " + resp );
             if (resp.length === 0) {
                 console.log("melted-node: [expect] Received empty string, retrying. with prefix: " + prefix );
