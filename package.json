@@ -1,9 +1,9 @@
 {
     "name": "melted-node",
     "description": "a library to interface with the Melted playout server",
-    "version": "0.0.3",
+    "version": "0.0.4",
     "author": "Juan Martin Runge <jmrunge@gmail.com>",
-    "contributors": [ "Niv Sardi <xaiki@inaes.gob.ar>", "hatcsh"],
+    "contributors": [ "Niv Sardi <xaiki@inaes.gob.ar>", "hatcsh", "Fabricio Costa <abricio.costa@moldeointeractive.com.ar>"],
     "scripts": {
         "test": "./node_modules/.bin/mocha --reporter spec --timeout 0 mocha.js"
     },
