@@ -231,6 +231,8 @@ function melted_node(host, port) {
             if (prefix !== undefined) 
                 data = prefix + "\r" + "\n" + data;
             var datax = data.split("\r\n");
+            var i = 0;
+            var sep = "";
             for(i = 0, data = "", sep = ""; i < datax.length; i++) {
                 if (datax[i] !== "") { 
                     data = data + sep + datax[i]; 
@@ -241,6 +243,7 @@ function melted_node(host, port) {
                 } 
             }
             /* END FIX for Issue 1 */
+            var resp = data.replace(/\r\n/g, "");
             console.log("melted-node: [expect] Formatted Response: " + resp );
             if (resp.length === 0) {
                 console.log("melted-node: [expect] Received empty string, retrying. with prefix: " + prefix );
