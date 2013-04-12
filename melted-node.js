@@ -218,18 +218,23 @@ function melted_node(host, port) {
         return deferred.promise;
     };
 
-    function expect(expected, command, prefix) {
-        console.log("melted-node: [expect] Invoked to expect: " + expected);
+      function expect(expected, command, prefix) {
+        console.log("melted-node: [expect] Invoked to expect: " + expected + " for command:" + command);
 		
         var deferred = Q.defer();
         self.server.removeListener('data', addPendingData);
         self.server.once('data', function(data) {
             self.server.addListener('data', addPendingData);
-            console.log("melted-node: [expect] Received: " + data);
-            var resp = data.replace(/\r\n/g, "");
-            console.log("melted-node: [expect] Formatted Response: " + resp);
+			console.log("melted-node: [expect] Received: " + data + " Expected:" + expected);
+			var end_resp = false;
+			if (prefix!=undefined) data = prefix + "\r"+"\n" + data;
+			var datax = data.split("\r\n");
+			for(i=0,data="",sep="";i<datax.length;i++)	{ 	if (datax[i]!="") { data = data + sep + datax[i]; sep = "\r" + "\n"; } 
+					if (datax[i]=="402 Argument missing") { end_resp =  true; } }
+			resp = data.replace(/\r\n/g, "");
+            console.log("melted-node: [expect] Formatted Response: " + resp );
             if (resp.length === 0) {
-                console.log("melted-node: [expect] Received empty string, retrying");
+                console.log("melted-node: [expect] Received empty string, retrying. with prefix: " + prefix );
                 deferred.resolve(expect(expected, command, prefix));
             } else {
                 if (prefix === undefined) {
@@ -244,16 +249,16 @@ function melted_node(host, port) {
                     self.server.write("get\n");
                 } else {
                     //HACK: here we read the response of the fake command sent above to see if response ended or not
-                    if (resp === "402 Argument missing") {
+                    if (resp === "402 Argument missing" || end_resp ) {
                         //HACK: if we received the expected response to the fake command, response of the real command ended
                         var pfx = prefix.replace(/\r\n/g, "");
                         if ((pfx.substring(0, 1) === "2") || (pfx === "100 VTR Ready"))
-                            deferred.resolve(prefix);
+                            deferred.resolve( data );
                         else
-                            deferred.reject(prefix);
+                            deferred.reject( data );
                     } else {
                         //HACK: if response is other than the expected for the fake command, we continue listening
-                        deferred.resolve(expect(expected, command, prefix + data));
+                        deferred.resolve(expect(expected, command, data));
                     }
                 }
             }
