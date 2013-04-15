@@ -5,7 +5,7 @@
     "author": "Juan Martin Runge <jmrunge@gmail.com>",
     "contributors": [ "Niv Sardi <xaiki@inaes.gob.ar>", "hatcsh", "Fabricio Costa <abricio.costa@moldeointeractive.com.ar>"],
     "scripts": {
-        "test": "./node_modules/.bin/mocha --reporter spec --timeout 0 mocha.js"
+        "test": "make test"
     },
     "main": "melted-node",
     "repository": {
