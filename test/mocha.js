@@ -1,6 +1,6 @@
 var assert = require("assert");
 
-var melted_node = require('./melted-node');
+var melted_node = require('../melted-node');
 var mlt = new melted_node('localhost', 5250);
 
 // SILENCE LOG OUTPUT
@@ -52,9 +52,9 @@ describe('commands', function(){
     describe('#bad and good commands', function(){
         before(function(done) {
             mlt.sendCommand("no_such_command in my town", "200 OK");
-            mlt.sendCommand("load u0 /home/jmrunge/Data/Descargas/Backyardigans---El-Fuerte-de-Nieve.rmvb", "200 OK");
+            mlt.sendCommand("load u0 ./test/videos/SMPTE_Color_Bars_01.mp4", "200 OK");
             mlt.sendCommand("play u0", "200 OK");
-            mlt.sendCommand("apnd u0 /home/jmrunge/mbc/melted-node/logo.jpg", "200 OK");
+            mlt.sendCommand("apnd u0 ./test/videos/SMPTE_Color_Bars_02.mp4", "200 OK");
             setTimeout(function() {
                 done();
             }, 1000);
@@ -159,22 +159,23 @@ describe('promised command', function() {
     });    
 });
 
-describe('xml', function() {
-    describe('#add xml file with filter', function(){
-        before(function(done) {
-            mlt.sendCommand("load u0 /home/jmrunge/mbc/melted-node/melted-test.xml", "200 OK");
-            mlt.sendCommand("play u0", "200 OK");
-            setTimeout(function() {
-                done();
-            }, 1000);
-        });
-        it('--should return 3 because of previous test', function(){
-            assert.equal(mlt.errors.length, 3);
-        });
-    });
-});
+//describe('xml', function() {
+//    describe('#add xml file with filter', function(){
+//        before(function(done) {
+//            mlt.sendCommand("load u0 ./test/melted-test.xml", "200 OK");
+//            mlt.sendCommand("play u0", "200 OK");
+//            setTimeout(function() {
+//                done();
+//            }, 1000);
+//        });
+//        it('--should return 3 because of previous test', function(){
+//            assert.equal(mlt.errors.length, 3);
+//        });
+//    });
+//});
 
 describe('stress', function() {
+    this.timeout(0);
     describe('#obtain status 100 times', function() {
         before(function(done) {
             var count = 0;
@@ -184,10 +185,16 @@ describe('stress', function() {
                     done();
                 }
                 mlt.sendCommand("usta u0", "202 OK", function(response) {
-                    console.log(response);
+                    console.log("USTA:" + response);
                     console.log("PASADA NRO: " + count);
                 }, function(error) {
-                    console.error(error);
+                    console.error("USTA: " + error);
+                });
+                console.log("mando goto");
+                mlt.sendCommand("goto u0 " + count * 3, "200 OK", function(response) {
+                    console.log("GOTO: " + response);
+                }, function(error) {
+                    console.error("GOTO: " + error);
                 });
                 count++;
             }, 500);
