@@ -218,7 +218,7 @@ function melted_node(host, port) {
         return deferred.promise;
     };
 
-      function expect(expected, command, prefix) {
+    function expect(expected, command, prefix) {
         console.log("melted-node: [expect] Invoked to expect: " + expected + " for command:" + command);
 		
         var deferred = Q.defer();
