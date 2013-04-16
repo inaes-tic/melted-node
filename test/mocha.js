@@ -159,20 +159,20 @@ describe('promised command', function() {
     });    
 });
 
-//describe('xml', function() {
-//    describe('#add xml file with filter', function(){
-//        before(function(done) {
-//            mlt.sendCommand("load u0 ./test/melted-test.xml", "200 OK");
-//            mlt.sendCommand("play u0", "200 OK");
-//            setTimeout(function() {
-//                done();
-//            }, 1000);
-//        });
-//        it('--should return 3 because of previous test', function(){
-//            assert.equal(mlt.errors.length, 3);
-//        });
-//    });
-//});
+describe('xml', function() {
+    describe('#add xml file with filter', function(){
+        before(function(done) {
+            mlt.sendCommand("load u0 ./test/melted-test.xml", "200 OK");
+            mlt.sendCommand("play u0", "200 OK");
+            setTimeout(function() {
+                done();
+            }, 1000);
+        });
+        it('--should return 3 because of previous test', function(){
+            assert.equal(mlt.errors.length, 3);
+        });
+    });
+});
 
 describe('stress', function() {
     this.timeout(0);
