@@ -159,7 +159,7 @@ function melted_node(host, port) {
 
         if (command !== undefined) {
             console.log("melted-node: [processQueue] Processing command: " + command[0]);
-            var result = _sendCommand(command[0], command[1]);
+            var result = _sendCommand(command[0], command[1], command[2]);
 
             result.then(function() {
                 if (onSuccess !== undefined) {
@@ -194,10 +194,8 @@ function melted_node(host, port) {
         return result.promise;
     }
 
-    function _sendCommand(command, expected) {
+    function _sendCommand(command, expected, deferred) {
         console.log("melted-node: [_sendCommand] Sending command: " + command);
-
-        var deferred = Q.defer();
 
         self.server.write(command + "\n");
 
