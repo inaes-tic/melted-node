@@ -113,16 +113,6 @@ function melted_node(host, port) {
     melted_node.prototype.sendPromisedCommand = function(command, expected) {
         console.log("melted-node: [sendPromisedCommand] Invoked for command: " + command + ", expected: " + expected);
 
-        var deferred = Q.defer();
-
-        var successFunction = function(response) {
-            deferred.resolve(response);
-        };
-
-        var errorFunction = function(error) {
-            deferred.reject(error);
-        };
-
         var result = addCommandToQueue(command, expected);
 
         if (!self.connected) { 
@@ -133,7 +123,7 @@ function melted_node(host, port) {
             processQueue();
         }
 
-        return deferred.promise;
+        return result;
     };
 
     melted_node.prototype.sendCommand = function(command, expected, onSuccess, onError) {
