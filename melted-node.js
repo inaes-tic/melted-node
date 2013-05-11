@@ -161,21 +161,15 @@ function melted_node(host, port) {
             console.log("melted-node: [processQueue] Processing command: " + command[0]);
             var result = _sendCommand(command[0], command[1], command[2]);
 
-            result.then(function() {
-                if (onSuccess !== undefined) {
-                    console.log("melted-node: [processQueue] Calling success callback: " + onSuccess.name);
-                    onSuccess(result);
-                }
+            result.then(function(val) {
                 processQueue();
+                return val;
             }, function(error) {
                 var err = new Error("melted-node: [processQueue] Error processing command: " + command[0] + " [" + error + "]");
                 console.error(err);
                 self.errors.push(err);
                 processQueue();
-                if (onError !== undefined) {
-                    console.log("melted-node: [processQueue] Calling error callback: " + onError.name);
-                    onError(error);
-                }
+                throw error;
             });		
         } else {
             console.log("melted-node: [processQueue] Nothing else to process");
