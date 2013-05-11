@@ -51,7 +51,7 @@ describe('connects', function(){
 describe('commands', function(){
     describe('#bad and good commands', function(){
         before(function(done) {
-            mlt.sendCommand("no_such_command in my town", "200 OK");
+            mlt.sendCommand("no_such_command in my town", "200 OK", null, function(){});
             mlt.sendCommand("load u0 ./test/videos/SMPTE_Color_Bars_01.mp4", "200 OK");
             mlt.sendCommand("play u0", "200 OK");
             mlt.sendCommand("apnd u0 ./test/videos/SMPTE_Color_Bars_02.mp4", "200 OK");
