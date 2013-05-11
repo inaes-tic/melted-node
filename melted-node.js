@@ -123,7 +123,7 @@ function melted_node(host, port) {
             deferred.reject(error);
         };
 
-        addCommandToQueue(command, expected, successFunction, errorFunction);
+        var result = addCommandToQueue(command, expected);
 
         if (!self.connected) { 
             if (!self.connecting) {
@@ -139,7 +139,8 @@ function melted_node(host, port) {
     melted_node.prototype.sendCommand = function(command, expected, onSuccess, onError) {
         console.log("melted-node: [sendCommand] Invoked for command: " + command + ", expected: " + expected);
 
-        addCommandToQueue(command, expected, onSuccess, onError);
+        var result = addCommandToQueue(command, expected);
+        result.then(onSuccess, onError).done();
 
         if (!self.connected) { 
             if (!self.connecting) {
@@ -167,8 +168,6 @@ function melted_node(host, port) {
         var command = self.commands.shift();
 
         if (command !== undefined) {
-            var onSuccess = command[2];
-            var onError = command[3];
             console.log("melted-node: [processQueue] Processing command: " + command[0]);
             var result = _sendCommand(command[0], command[1]);
 
@@ -194,14 +193,15 @@ function melted_node(host, port) {
         }
     }
 
-    function addCommandToQueue(command, expected, onSuccess, onError) {
+    function addCommandToQueue(command, expected) {
         console.log("melted-node: [addCommandToQueue] Invoked for command: " + command + ", expected: " + expected);
         var com = [];
+        var result = Q.defer();
         com[0] = command;
         com[1] = expected;
-        com[2] = onSuccess;
-        com[3] = onError;
+        com[2] = result;
         self.commands.push(com);
+        return result.promise;
     }
 
     function _sendCommand(command, expected) {
