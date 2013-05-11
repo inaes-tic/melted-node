@@ -20,7 +20,7 @@ console.log = console.info = function(t) {
   out && log.write(out + '\n');
 };*/
 // END SILENCE LOG OUTPUT
- 
+
 describe('connects', function(){
     before(function(done) {
         var result = mlt.connect();
@@ -28,7 +28,7 @@ describe('connects', function(){
             done();
         }, function(err) {
             console.error("Error: " + err);
-        });	
+        });
     });
     describe('#connected', function(){
         it('--should return true', function(){
@@ -156,7 +156,7 @@ describe('promised command', function() {
         it('--received response for good command', function(){
             assert.equal (response2Received, true);
         });
-    });    
+    });
 });
 
 describe('xml', function() {
