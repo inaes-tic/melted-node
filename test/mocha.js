@@ -50,17 +50,25 @@ describe('connects', function(){
 
 describe('commands', function(){
     describe('#bad and good commands', function(){
-        before(function(done) {
-            mlt.sendCommand("no_such_command in my town", "200 OK", null, function(){});
-            mlt.sendCommand("load u0 ./test/videos/SMPTE_Color_Bars_01.mp4", "200 OK");
-            mlt.sendCommand("play u0", "200 OK");
-            mlt.sendCommand("apnd u0 ./test/videos/SMPTE_Color_Bars_02.mp4", "200 OK");
-            setTimeout(function() {
-                done();
-            }, 1000);
-        });
-        it('--should return 1 because of first command', function(){
-            assert.equal (mlt.errors.length, 1);
+        describe('callback version', function() {
+            it('--should fail with unknown commands', function(done){
+                mlt.sendCommand("no_such_command in my town",
+                                "200 OK",
+                                function(val){
+                                    return done(new Error(val));
+                                }, function(){ done(); });
+            });
+            it('--"load" should pass', function(done) {
+                mlt.sendCommand("load u0 ./test/videos/SMPTE_Color_Bars_01.mp4",
+                                "200 OK", function(){ done(); });
+            });
+            it('-- "play" should pass (after "load")', function(done) {
+                mlt.sendCommand("play u0", "200 OK", function(){ done() });
+            });
+            it('-- "append" shuold pass', function(done) {
+                mlt.sendCommand("apnd u0 ./test/videos/SMPTE_Color_Bars_02.mp4",
+                                "200 OK", function() { done() });
+            });
         });
     });
 });
