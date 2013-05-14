@@ -113,17 +113,7 @@ function melted_node(host, port) {
     melted_node.prototype.sendPromisedCommand = function(command, expected) {
         console.log("melted-node: [sendPromisedCommand] Invoked for command: " + command + ", expected: " + expected);
 
-        var deferred = Q.defer();
-
-        var successFunction = function(response) {
-            deferred.resolve(response);
-        };
-
-        var errorFunction = function(error) {
-            deferred.reject(error);
-        };
-
-        addCommandToQueue(command, expected, successFunction, errorFunction);
+        var result = addCommandToQueue(command, expected);
 
         if (!self.connected) { 
             if (!self.connecting) {
@@ -133,13 +123,14 @@ function melted_node(host, port) {
             processQueue();
         }
 
-        return deferred.promise;
+        return result;
     };
 
     melted_node.prototype.sendCommand = function(command, expected, onSuccess, onError) {
         console.log("melted-node: [sendCommand] Invoked for command: " + command + ", expected: " + expected);
 
-        addCommandToQueue(command, expected, onSuccess, onError);
+        var result = addCommandToQueue(command, expected);
+        result.then(onSuccess, onError).done();
 
         if (!self.connected) { 
             if (!self.connecting) {
@@ -167,26 +158,18 @@ function melted_node(host, port) {
         var command = self.commands.shift();
 
         if (command !== undefined) {
-            var onSuccess = command[2];
-            var onError = command[3];
             console.log("melted-node: [processQueue] Processing command: " + command[0]);
-            var result = _sendCommand(command[0], command[1]);
+            var result = _sendCommand(command[0], command[1], command[2]);
 
-            result.then(function() {
-                if (onSuccess !== undefined) {
-                    console.log("melted-node: [processQueue] Calling success callback: " + onSuccess.name);
-                    onSuccess(result);
-                }
+            result.then(function(val) {
                 processQueue();
+                return val;
             }, function(error) {
                 var err = new Error("melted-node: [processQueue] Error processing command: " + command[0] + " [" + error + "]");
                 console.error(err);
                 self.errors.push(err);
                 processQueue();
-                if (onError !== undefined) {
-                    console.log("melted-node: [processQueue] Calling error callback: " + onError.name);
-                    onError(error);
-                }
+                throw error;
             });		
         } else {
             console.log("melted-node: [processQueue] Nothing else to process");
@@ -194,20 +177,19 @@ function melted_node(host, port) {
         }
     }
 
-    function addCommandToQueue(command, expected, onSuccess, onError) {
+    function addCommandToQueue(command, expected) {
         console.log("melted-node: [addCommandToQueue] Invoked for command: " + command + ", expected: " + expected);
         var com = [];
+        var result = Q.defer();
         com[0] = command;
         com[1] = expected;
-        com[2] = onSuccess;
-        com[3] = onError;
+        com[2] = result;
         self.commands.push(com);
+        return result.promise;
     }
 
-    function _sendCommand(command, expected) {
+    function _sendCommand(command, expected, deferred) {
         console.log("melted-node: [_sendCommand] Sending command: " + command);
-
-        var deferred = Q.defer();
 
         self.server.write(command + "\n");
 
