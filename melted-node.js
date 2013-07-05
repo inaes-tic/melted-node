@@ -51,7 +51,7 @@ melted_node.prototype.processQueue = function() {
         result.then(function(val) {
             self.processQueue();
             return val;
-        }, function(error) {
+        }).fail(function(error) {
             var err = new Error("melted-node: [processQueue] Error processing command: " + command[0] + " [" + error + "]");
             console.error(err);
             self.errors.push(err);
