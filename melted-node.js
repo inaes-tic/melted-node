@@ -168,6 +168,7 @@ melted_node.prototype._connect = function(deferred) {
     
     self.server = new net.createConnection(this.port, this.host);
     self.server.setEncoding('ascii');
+    self.server.setNoDelay(true);
 
     /*
       Event: 'connect'#
