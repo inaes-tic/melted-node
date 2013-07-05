@@ -38,6 +38,9 @@ melted_node.prototype.processQueue = function() {
 
     if (!self.processing)
         self.processing = true;
+    
+    if (!self.connected)
+        return;
 
     var command = self.commands.shift();
 
