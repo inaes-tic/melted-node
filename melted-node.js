@@ -15,6 +15,7 @@ function melted_node(host, port) {
     this.host       = host;
     this.port       = port;
     this.connects   = semaphore(1);
+    this.response   = moment();
     
     if (this.host === undefined)
         this.host = 'localhost';
@@ -90,8 +91,10 @@ melted_node.prototype.expect = function(expected, command, prefix) {
     console.log("melted-node: [expect] Invoked to expect: " + expected + " for command:" + command);
 
     var deferred = Q.defer();
+    setTimeout(self.checkTimeout.bind(self, deferred), 1000);
     self.server.removeAllListeners('data');
     self.server.once('data', function(data) {
+        self.response = moment();
         self.server.addListener('data', self.addPendingData);
         console.log("melted-node: [expect] Received: " + data + " Expected:" + expected);
         /* FIX for Issue 1 */
@@ -260,6 +263,16 @@ melted_node.prototype.close = function(had_error) {
     delete self.server;
     self.connect();
 };
+
+melted_node.prototype.checkTimeout= function(promise) {
+    var self = this;
+    if (moment().diff(self.response) > 1000) {
+        var error = new Error("melted-node: [connect] Melted Server connection timed out");
+        console.error(error);
+        promise.reject(error);
+        if (self.connected)
+            self.server.end();
+    }
 };
 
 melted_node.prototype.sendPromisedCommand = function(command, expected) {
