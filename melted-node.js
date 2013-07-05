@@ -1,5 +1,7 @@
-var net = require('net'), 
-    Q = require('q');
+var net       = require('net'), 
+    Q         = require('q'), 
+    moment    = require('moment'), 
+    semaphore = require('semaphore');
 
 function melted_node(host, port) {
     var self = this;
