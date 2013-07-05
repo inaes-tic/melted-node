@@ -4,8 +4,6 @@ var net       = require('net'),
     semaphore = require('semaphore');
 
 function melted_node(host, port) {
-    var self = this;
-
     this.server     = false;
     this.errors     = [];
     this.pending    = [];
@@ -158,6 +156,7 @@ melted_node.prototype.connect = function() {
     self.connects.take(self._connect.bind(self, deferred));
     return deferred.promise;
 };
+
 melted_node.prototype._connect = function(deferred) {
     var self = this;
     console.log("melted-node: [connect] Invoked");
