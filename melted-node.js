@@ -269,6 +269,28 @@ melted_node.prototype.close = function(had_error) {
     self.connect();
 };
 
+melted_node.prototype.disconnect = function() {
+    var self = this;
+    var deferred = Q.defer();
+    self.connects.take(self._disconnect.bind(self, deferred));
+    return deferred.promise;
+};
+
+melted_node.prototype._disconnect = function(deferred) {
+    var self = this;
+    
+    console.log("melted-node: [disconnect] Disconnecting from Melted Server");
+    self.server.removeAllListeners();
+    self.server.end();
+    self.server.once('close', function(had_error) {
+        self.connected = false;
+        delete self.server;
+        deferred.resolve("Server Disconnected");
+        console.log("melted-node: [disconnect] Disconnected from Melted Server");
+        self.connects.leave();
+    });
+};
+
 melted_node.prototype.checkTimeout= function(promise) {
     var self = this;
     if (moment().diff(self.response) > 1000) {
