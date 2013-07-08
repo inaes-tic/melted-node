@@ -211,11 +211,17 @@ describe('stress', function() {
             assert.equal(mlt.errors.length, 3);
         });
         after(function(done) {
-//            setTimeout(function() {
-                mlt.sendCommand("stop u0", "200 OK", function(result) {
-                    done();
-                });
-//            }, 2500);
+            mlt.sendPromisedCommand("stop u0", "200 OK").fin(function(result) {
+                done();
+            });
         });
     }) ;
+});
+
+describe('disconnect', function() {
+    it('--disconnect', function() {
+        mlt.disconnect().then(function(result) {
+            assert.equal(self.mlt.connected, false);
+        });
+    });
 });
