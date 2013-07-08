@@ -44,18 +44,20 @@ melted_node.prototype.processQueue = function() {
 
     if (command !== undefined) {
         console.log("melted-node: [processQueue] Processing command: " + command[0]);
-        var result = self._sendCommand(command[0], command[1], command[2]);
+        self.connects.take(function() {
+            var result = self._sendCommand(command[0], command[1], command[2]);
 
-        result.then(function(val) {
-            self.processQueue();
-            return val;
-        }).fail(function(error) {
-            var err = new Error("melted-node: [processQueue] Error processing command: " + command[0] + " [" + error + "]");
-            console.error(err);
-            self.errors.push(err);
-            self.processQueue();
-            throw error;
-        });		
+            result.then(function(val) {
+                self.processQueue();
+                return val;
+            }).fail(function(error) {
+                var err = new Error("melted-node: [processQueue] Error processing command: " + command[0] + " [" + error + "]");
+                console.error(err);
+                self.errors.push(err);
+                self.processQueue();
+                throw error;
+            }).fin(self.connects.leave);		
+        });
     } else {
         console.log("melted-node: [processQueue] Nothing else to process");
         self.processing = false;
