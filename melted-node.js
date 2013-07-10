@@ -37,14 +37,16 @@ melted_node.prototype.processQueue = function() {
     if (!self.processing)
         self.processing = true;
     
-    if (!self.connected)
-        return;
+    self.connects.take(function() {
+        if (!self.connected) {
+            self.connects.leave();
+            return;
+        }
 
-    var command = self.commands.shift();
+        var command = self.commands.shift();
 
-    if (command !== undefined) {
-        console.log("melted-node: [processQueue] Processing command: " + command[0]);
-        self.connects.take(function() {
+        if (command !== undefined) {
+            console.log("melted-node: [processQueue] Processing command: " + command[0]);
             var result = self._sendCommand(command[0], command[1], command[2]);
 
             result.then(function(val) {
@@ -57,11 +59,12 @@ melted_node.prototype.processQueue = function() {
                 self.processQueue();
                 throw error;
             }).fin(self.connects.leave);		
-        });
-    } else {
-        console.log("melted-node: [processQueue] Nothing else to process");
-        self.processing = false;
-    }
+        } else {
+            console.log("melted-node: [processQueue] Nothing else to process");
+            self.processing = false;
+            self.connects.leave();
+        }
+    });
 };
 
 melted_node.prototype.addCommandToQueue = function(command, expected) {
@@ -99,7 +102,7 @@ melted_node.prototype.expect = function(expected, command, prefix) {
     self.server.once('data', function(data) {
         self.response = moment();
         self.server.addListener('data', self.addPendingData);
-        console.log("melted-node: [expect] Received: " + data + " Expected:" + expected);
+        console.log("melted-node: [expect] Received: " + data + " Expected: " + expected);
         /* FIX for Issue 1 */
         var end_resp = false;
         if (prefix !== undefined) 
