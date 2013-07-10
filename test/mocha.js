@@ -219,9 +219,19 @@ describe('stress', function() {
 });
 
 describe('disconnect', function() {
-    it('--disconnect', function() {
-        mlt.disconnect().then(function(result) {
-            assert.equal(self.mlt.connected, false);
+    it('having commands in queue and disconnect shouldnt throw errors', function(done) {
+        assert.doesNotThrow(function() {
+            mlt.sendCommand("usta u0", "200 OK");
+            mlt.sendCommand("usta u0", "200 OK");
+            mlt.sendCommand("usta u0", "200 OK");
+            mlt.sendCommand("usta u0", "200 OK");
+            mlt.sendCommand("usta u0", "200 OK");
+            mlt.disconnect().then(function(result) {
+                done();
+            });
         });
+    });
+    it('--disconnected', function() {
+        assert.equal(mlt.connected, false);
     });
 });
