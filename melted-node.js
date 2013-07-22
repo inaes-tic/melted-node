@@ -13,6 +13,7 @@ function melted_node(host, port) {
     this.host       = host;
     this.port       = port;
     this.connects   = semaphore(1);
+    this.started    = false;
     this.responses  = [];
     
     if (this.host === undefined)
@@ -162,6 +163,8 @@ melted_node.prototype.expect = function(expected, command, prefix) {
 
 melted_node.prototype.connect = function() {
     var self = this;
+    if (!self.started)
+        self.started = true;
     var deferred = Q.defer();
     self.connects.take(self._connect.bind(self, deferred));
     return deferred.promise;
@@ -187,8 +190,9 @@ melted_node.prototype._connect = function(deferred) {
       Emitted when a socket connection is successfully established. See connect().
     */
     self.server.on("connect", function() {
-        console.log("melted-node: [connect] Connected to Melted Server" );
+        console.log("melted-node: [connect] Connecting to Melted Server..." );
         deferred.resolve(self.expect("100 VTR Ready").then(function() {
+            console.log("melted-node: [connect] Connected to Melted Server" );
             self.server.removeAllListeners('close');
             self.server.addListener('close', self.close.bind(self));
             self.connected = true;
@@ -330,7 +334,8 @@ melted_node.prototype.sendPromisedCommand = function(command, expected) {
     var result = self.addCommandToQueue(command, expected);
 
     if (!self.connected) { 
-        self.connect();
+        if (!self.started)
+            self.connect();
     } else if (!self.processing) {
         self.processQueue();
     }
@@ -346,7 +351,8 @@ melted_node.prototype.sendCommand = function(command, expected, onSuccess, onErr
     result.then(onSuccess, onError).done();
 
     if (!self.connected) { 
-        self.connect();
+        if (!self.started)
+            self.connect();
     } else if (!self.processing) {
         self.processQueue();
     }
