@@ -293,7 +293,6 @@ melted_node.prototype._disconnect = function(deferred) {
     
     console.log("melted-node: [disconnect] Disconnecting from Melted Server");
     self.server.removeAllListeners();
-    self.server.end();
     self.server.once('close', function(had_error) {
         self.connected = false;
         delete self.server;
@@ -301,6 +300,7 @@ melted_node.prototype._disconnect = function(deferred) {
         console.log("melted-node: [disconnect] Disconnected from Melted Server");
         self.connects.leave();
     });
+    self.server.end();
 };
 
 melted_node.prototype.checkTimeout= function(resp) {
