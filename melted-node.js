@@ -276,9 +276,9 @@ melted_node.prototype.close = function(had_error) {
         console.info("melted-node: [connect] Melted Server connection closed");
     self.connected = false;
     self.server.removeAllListeners();
-    self.server.destroy();
+//    self.server.destroy();
     delete self.server;
-    self.connect();
+    setTimeout(self.connect.bind(self), 500);
 };
 
 melted_node.prototype.disconnect = function() {
