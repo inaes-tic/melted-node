@@ -13,7 +13,7 @@ function melted_node(host, port) {
     this.host       = host;
     this.port       = port;
     this.connects   = semaphore(1);
-    this.response   = moment();
+    this.responses  = [];
     
     if (this.host === undefined)
         this.host = 'localhost';
@@ -97,10 +97,15 @@ melted_node.prototype.expect = function(expected, command, prefix) {
     console.log("melted-node: [expect] Invoked to expect: " + expected + " for command:" + command);
 
     var deferred = Q.defer();
-    setTimeout(self.checkTimeout.bind(self, deferred), 1000);
+    var response = {};
+    response.id = moment();
+    response.deferred = deferred;
+    response.processed = false;
+    self.responses.push(response);
+    setTimeout(self.checkTimeout.bind(self, response), 1000);
     self.server.removeAllListeners('data');
     self.server.once('data', function(data) {
-        self.response = moment();
+        response.processed = true;
         self.server.addListener('data', self.addPendingData);
         console.log("melted-node: [expect] Received: " + data + " Expected: " + expected);
         /* FIX for Issue 1 */
@@ -294,12 +299,25 @@ melted_node.prototype._disconnect = function(deferred) {
     });
 };
 
-melted_node.prototype.checkTimeout= function(promise) {
+melted_node.prototype.checkTimeout= function(resp) {
     var self = this;
-    if (moment().diff(self.response) > 1000) {
+    
+    var timeout = true;
+    var x = -1;
+    var index = -1;
+    self.responses.forEach(function(item) {
+        x++;
+        if (item.id === resp.id) {
+            timeout = !item.processed;
+            index = x;
+        }
+    });
+    if (index >= 0)
+        self.responses.splice(index, 1);
+    if (timeout) {
         var error = new Error("melted-node: [connect] Melted Server connection timed out");
         console.error(error);
-        promise.reject(error);
+        resp.deferred.reject(error);
         if (self.connected)
             self.server.end();
     }
