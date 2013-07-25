@@ -1,9 +1,9 @@
 {
     "name": "melted-node",
     "description": "a library to interface with the Melted playout server",
-    "version": "0.0.8",
+    "version": "0.0.9",
     "author": "Juan Martin Runge <jmrunge@gmail.com>",
-    "contributors": [ "Niv Sardi <xaiki@inaes.gob.ar>", "hatcsh", "Fabricio Costa <abricio.costa@moldeointeractive.com.ar>"],
+    "contributors": [ "Niv Sardi <xaiki@inaes.gob.ar>", "hatcsh", "Fabricio Costa <fabricio.costa@moldeointeractive.com.ar>"],
     "scripts": {
         "test": "make test"
     },
@@ -20,7 +20,8 @@
     "dependencies" : {
         "q"         : "0.8.x",
         "moment"    : "2.0.x", 
-        "semaphore" : "1.0.x"
+        "semaphore" : "1.0.x",
+        "winston"   : "0.7.x"
     },
     "devDependencies": {
         "mocha"    :  "1.7.x"

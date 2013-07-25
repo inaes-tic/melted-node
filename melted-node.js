@@ -1,9 +1,10 @@
 var net       = require('net'), 
     Q         = require('q'), 
     moment    = require('moment'), 
-    semaphore = require('semaphore');
+    semaphore = require('semaphore')
+    winston   = require('winston');;
 
-function melted_node(host, port) {
+function melted_node(host, port, logger) {
     this.server     = false;
     this.errors     = [];
     this.pending    = [];
@@ -20,20 +21,47 @@ function melted_node(host, port) {
         this.host = 'localhost';
     if (this.port === undefined)
         this.port = 5250;
+    
+    this.logger = logger || new (winston.Logger)({
+        transports: [
+            new winston.transports.Console({ 
+                colorize: true,
+                level: 'info',
+                timestamp: true
+            }),
+            new (winston.transports.File)({
+                filename: './logs/melted-node.log',
+                handleExceptions: true,
+                level: 'debug',
+                timestamp: true,
+                json: false,
+                maxsize: 1024000,
+                maxFiles: 5
+            })
+        ],
+        exitOnError: false,
+        levels: {
+            fatal: 4,
+            error: 3,
+            warn: 2,
+            info: 1,
+            debug: 0
+        }
+    });
 };
 
 melted_node.prototype.addPendingData = function(data) {
     var self = this;
     if (data.match(/[^\s]/)) {
         self.pending.push(data);
-        console.warn("melted-node: [addPendingData] Got " + self.pending.length + " data pending.");
-        console.warn("melted-node: [addPendingData] Data: " + data);
+        self.logger.warn("[addPendingData] Got " + self.pending.length + " data pending.");
+        self.logger.warn("[addPendingData] Data: " + data);
     }
 };
 
 melted_node.prototype.processQueue = function() {
     var self = this;
-    console.log("melted-node: [processQueue] Invoked"); 
+    self.logger.debug("[processQueue] Invoked"); 
 
     if (!self.processing)
         self.processing = true;
@@ -47,21 +75,21 @@ melted_node.prototype.processQueue = function() {
         var command = self.commands.shift();
 
         if (command !== undefined) {
-            console.log("melted-node: [processQueue] Processing command: " + command[0]);
+            self.logger.debug("[processQueue] Processing command: " + command[0]);
             var result = self._sendCommand(command[0], command[1], command[2]);
 
             result.then(function(val) {
                 self.processQueue();
                 return val;
             }).fail(function(error) {
-                var err = new Error("melted-node: [processQueue] Error processing command: " + command[0] + " [" + error + "]");
-                console.error(err);
+                var err = new Error("[processQueue] Error processing command: " + command[0] + " [" + error + "]");
+                self.logger.error(err.message);
                 self.errors.push(err);
                 self.processQueue();
                 throw error;
             }).fin(self.connects.leave);		
         } else {
-            console.log("melted-node: [processQueue] Nothing else to process");
+            self.logger.debug("[processQueue] Nothing else to process");
             self.processing = false;
             self.connects.leave();
         }
@@ -70,7 +98,7 @@ melted_node.prototype.processQueue = function() {
 
 melted_node.prototype.addCommandToQueue = function(command, expected) {
     var self = this;
-    console.log("melted-node: [addCommandToQueue] Invoked for command: " + command + ", expected: " + expected);
+    self.logger.debug("[addCommandToQueue] Invoked for command: " + command + ", expected: " + expected);
     var com = [];
     var result = Q.defer();
     com[0] = command;
@@ -82,7 +110,7 @@ melted_node.prototype.addCommandToQueue = function(command, expected) {
 
 melted_node.prototype._sendCommand = function(command, expected, deferred) {
     var self = this;
-    console.log("melted-node: [_sendCommand] Sending command: " + command);
+    self.logger.debug("[_sendCommand] Sending command: " + command);
 
     self.server.write(command + "\n");
 
@@ -95,7 +123,7 @@ melted_node.prototype._sendCommand = function(command, expected, deferred) {
 
 melted_node.prototype.expect = function(expected, command, prefix) {
     var self = this;
-    console.log("melted-node: [expect] Invoked to expect: " + expected + " for command:" + command);
+    self.logger.debug("[expect] Invoked to expect: " + expected + " for command:" + command);
 
     var deferred = Q.defer();
     var response = {};
@@ -108,7 +136,7 @@ melted_node.prototype.expect = function(expected, command, prefix) {
     self.server.once('data', function(data) {
         response.processed = true;
         self.server.addListener('data', self.addPendingData);
-        console.log("melted-node: [expect] Received: " + data + " Expected: " + expected);
+        self.logger.debug("[expect] Received: " + data + " Expected: " + expected);
         /* FIX for Issue 1 */
         var end_resp = false;
         if (prefix !== undefined) 
@@ -127,17 +155,17 @@ melted_node.prototype.expect = function(expected, command, prefix) {
         }
         /* END FIX for Issue 1 */
         var resp = data.replace(/\r\n/g, "");
-        console.log("melted-node: [expect] Formatted Response: " + resp );
+        self.logger.debug("[expect] Formatted Response: " + resp );
         if (resp.length === 0) {
-            console.log("melted-node: [expect] Received empty string, retrying. with prefix: " + prefix );
+            self.logger.debug("[expect] Received empty string, retrying. with prefix: " + prefix );
             deferred.resolve(self.expect(expected, command, prefix));
         } else {
             if (prefix === undefined) {
                 if (resp.substring(0, expected.length) === expected) {
-                    console.log("melted-node: [expect] Received expected response");
+                    self.logger.debug("[expect] Received expected response");
                     deferred.resolve(self.expect(expected, command, data));
                 } else {
-                    console.error("melted-node: [expect] Expected '" + expected + "' but got '" + resp + "' !");
+                    self.logger.error("[expect] Expected '" + expected + "' but got '" + resp + "' !");
                     deferred.resolve(self.expect(expected, command, data));
                 }
                 //HACK: to know when the response ends, we send a fake command and wait for its response
@@ -172,10 +200,10 @@ melted_node.prototype.connect = function() {
 
 melted_node.prototype._connect = function(deferred) {
     var self = this;
-    console.log("melted-node: [connect] Invoked");
+    self.logger.info("[connect] Invoked");
     
     if (self.connected) {
-        console.log("melted-node: [connect] Server already connected");
+        self.logger.info("[connect] Server already connected");
         deferred.resolve("Server already connected");
         self.connects.leave();
         return;
@@ -190,9 +218,9 @@ melted_node.prototype._connect = function(deferred) {
       Emitted when a socket connection is successfully established. See connect().
     */
     self.server.on("connect", function() {
-        console.log("melted-node: [connect] Connecting to Melted Server..." );
+        self.logger.info("[connect] Connecting to Melted Server..." );
         deferred.resolve(self.expect("100 VTR Ready").then(function() {
-            console.log("melted-node: [connect] Connected to Melted Server" );
+            self.logger.info("[connect] Connected to Melted Server" );
             self.server.removeAllListeners('close');
             self.server.addListener('close', self.close.bind(self));
             self.connected = true;
@@ -227,8 +255,8 @@ melted_node.prototype._connect = function(deferred) {
     */
     self.server.on('end', function () {
         if (self.pending.length)
-            console.error ("melted-node: [connect] Got 'end' but still data pending");
-        console.info("melted-node: [connect] Melted Server connection ended");
+            self.logger.error("[connect] Got 'end' but still data pending");
+        self.logger.info("[connect] Melted Server connection ended");
     });
 
     /*
@@ -251,7 +279,7 @@ melted_node.prototype._connect = function(deferred) {
       directly following self event.
     */
     self.server.on('error', function(err) {
-        console.error("melted-node: [connect] Could not connect to Melted Server", err);
+        self.logger.fatal("[connect] Could not connect to Melted Server", err);
         deferred.reject(err);
     });
 
@@ -271,9 +299,9 @@ melted_node.prototype._connect = function(deferred) {
 melted_node.prototype.close = function(had_error) {
    var self = this;
     if (had_error)
-        console.error("melted-node: [connect] Melted Server connection closed with error");
+        self.logger.fatal("[connect] Melted Server connection closed with error");
     else
-        console.info("melted-node: [connect] Melted Server connection closed");
+        self.logger.info("[connect] Melted Server connection closed");
     self.connected = false;
     self.server.removeAllListeners();
 //    self.server.destroy();
@@ -291,13 +319,13 @@ melted_node.prototype.disconnect = function() {
 melted_node.prototype._disconnect = function(deferred) {
     var self = this;
     
-    console.log("melted-node: [disconnect] Disconnecting from Melted Server");
+    self.logger.info("[disconnect] Disconnecting from Melted Server");
     self.server.removeAllListeners();
     self.server.once('close', function(had_error) {
         self.connected = false;
         delete self.server;
         deferred.resolve("Server Disconnected");
-        console.log("melted-node: [disconnect] Disconnected from Melted Server");
+        self.logger.info("[disconnect] Disconnected from Melted Server");
         self.connects.leave();
     });
     self.server.end();
@@ -319,8 +347,8 @@ melted_node.prototype.checkTimeout= function(resp) {
     if (index >= 0)
         self.responses.splice(index, 1);
     if (timeout) {
-        var error = new Error("melted-node: [connect] Melted Server connection timed out");
-        console.error(error);
+        var error = new Error("[timeout] Melted Server connection timed out");
+        self.logger.error(error.message);
         resp.deferred.reject(error);
         if (self.connected)
             self.server.end();
@@ -329,7 +357,7 @@ melted_node.prototype.checkTimeout= function(resp) {
 
 melted_node.prototype.sendPromisedCommand = function(command, expected) {
     var self = this;
-    console.log("melted-node: [sendPromisedCommand] Invoked for command: " + command + ", expected: " + expected);
+    self.logger.debug("[sendPromisedCommand] Invoked for command: " + command + ", expected: " + expected);
 
     var result = self.addCommandToQueue(command, expected);
 
@@ -345,7 +373,7 @@ melted_node.prototype.sendPromisedCommand = function(command, expected) {
 
 melted_node.prototype.sendCommand = function(command, expected, onSuccess, onError) {
     var self = this;
-    console.log("melted-node: [sendCommand] Invoked for command: " + command + ", expected: " + expected);
+    self.logger.debug("[sendCommand] Invoked for command: " + command + ", expected: " + expected);
 
     var result = self.addCommandToQueue(command, expected);
     result.then(onSuccess, onError).done();
@@ -358,7 +386,7 @@ melted_node.prototype.sendCommand = function(command, expected, onSuccess, onErr
     }
 };
     
-exports = module.exports = function(host, port) {
-    var mlt = new melted_node(host, port);
+exports = module.exports = function(host, port, logger) {
+    var mlt = new melted_node(host, port, logger);
     return mlt;
 };

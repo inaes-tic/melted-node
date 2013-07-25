@@ -221,11 +221,11 @@ describe('stress', function() {
 describe('disconnect', function() {
     it('having commands in queue and disconnect shouldnt throw errors', function(done) {
         assert.doesNotThrow(function() {
-            mlt.sendCommand("usta u0", "200 OK");
-            mlt.sendCommand("usta u0", "200 OK");
-            mlt.sendCommand("usta u0", "200 OK");
-            mlt.sendCommand("usta u0", "200 OK");
-            mlt.sendCommand("usta u0", "200 OK");
+            mlt.sendCommand("usta u0", "202 OK");
+            mlt.sendCommand("usta u0", "202 OK");
+            mlt.sendCommand("usta u0", "202 OK");
+            mlt.sendCommand("usta u0", "202 OK");
+            mlt.sendCommand("usta u0", "202 OK");
             mlt.disconnect().then(function(result) {
                 done();
             });
