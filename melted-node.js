@@ -1,8 +1,8 @@
 var net       = require('net'), 
     Q         = require('q'), 
     moment    = require('moment'), 
-    semaphore = require('semaphore')
-    winston   = require('winston');;
+    semaphore = require('semaphore'),
+    winston   = require('winston');
 
 function melted_node(host, port, logger) {
     this.server     = false;
@@ -39,14 +39,7 @@ function melted_node(host, port, logger) {
                 maxFiles: 5
             })
         ],
-        exitOnError: false,
-        levels: {
-            fatal: 4,
-            error: 3,
-            warn: 2,
-            info: 1,
-            debug: 0
-        }
+        exitOnError: false
     });
 };
 
@@ -279,7 +272,7 @@ melted_node.prototype._connect = function(deferred) {
       directly following self event.
     */
     self.server.on('error', function(err) {
-        self.logger.fatal("[connect] Could not connect to Melted Server", err);
+        self.logger.error("[connect] Could not connect to Melted Server", err);
         deferred.reject(err);
     });
 
@@ -299,7 +292,7 @@ melted_node.prototype._connect = function(deferred) {
 melted_node.prototype.close = function(had_error) {
    var self = this;
     if (had_error)
-        self.logger.fatal("[connect] Melted Server connection closed with error");
+        self.logger.error("[connect] Melted Server connection closed with error");
     else
         self.logger.info("[connect] Melted Server connection closed");
     self.connected = false;
