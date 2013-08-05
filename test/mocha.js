@@ -205,7 +205,7 @@ describe('stress', function() {
                     console.error("GOTO: " + error);
                 });
                 count++;
-            }, 500);
+            }, 50);
         });
         it('--should return 3 (no more errors!)', function(){
             assert.equal(mlt.errors.length, 3);
@@ -219,6 +219,7 @@ describe('stress', function() {
 });
 
 describe('disconnect', function() {
+    this.timeout(0);
     it('having commands in queue and disconnect shouldnt throw errors', function(done) {
         assert.doesNotThrow(function() {
             mlt.sendCommand("usta u0", "202 OK");
@@ -227,8 +228,10 @@ describe('disconnect', function() {
             mlt.sendCommand("usta u0", "202 OK");
             mlt.sendCommand("usta u0", "202 OK");
             mlt.disconnect().then(function(result) {
-                done();
-            });
+                console.log(result);
+            }).fail(function(error) {
+                console.log(error);
+            }).fin(done);
         });
     });
     it('--disconnected', function() {
