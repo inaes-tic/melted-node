@@ -16,13 +16,9 @@ function melted_node(host, port, logger) {
     this.connects   = semaphore(1);
     this.started    = false;
     this.responses  = [];
-    
-    if (this.host === undefined)
-        this.host = 'localhost';
-    if (this.port === undefined)
-        this.port = 5250;
-    
-    this.logger = logger || new (winston.Logger)({
+    this.host       = host || 'localhost';
+    this.port       = port || 5250;
+    this.logger     = logger || new (winston.Logger)({
         transports: [
             new winston.transports.Console({ 
                 colorize: true,
