@@ -318,7 +318,7 @@ melted_node.prototype._disconnect = function(deferred) {
         self.logger.info("[disconnect] Disconnected from Melted Server");
         self.connects.leave();
     });
-    self.server.end();
+    self.server.destroy();
 };
 
 melted_node.prototype.checkTimeout= function(resp) {
