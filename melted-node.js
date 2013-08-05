@@ -4,7 +4,7 @@ var net       = require('net'),
     semaphore = require('semaphore'),
     winston   = require('winston');
 
-function melted_node(host, port, logger) {
+function melted_node(host, port, logger, timeout) {
     this.server     = false;
     this.errors     = [];
     this.pending    = [];
@@ -16,6 +16,7 @@ function melted_node(host, port, logger) {
     this.connects   = semaphore(1);
     this.started    = false;
     this.responses  = [];
+    this.timeout    = timeout || 2000;
     this.host       = host || 'localhost';
     this.port       = port || 5250;
     this.logger     = logger || new (winston.Logger)({
@@ -120,7 +121,7 @@ melted_node.prototype.expect = function(expected, command, prefix) {
     response.deferred = deferred;
     response.processed = false;
     self.responses.push(response);
-    setTimeout(self.checkTimeout.bind(self, response), 1000);
+    setTimeout(self.checkTimeout.bind(self, response), self.timeout);
     self.server.removeAllListeners('data');
     self.server.once('data', function(data) {
         response.processed = true;
@@ -375,7 +376,7 @@ melted_node.prototype.sendCommand = function(command, expected, onSuccess, onErr
     }
 };
     
-exports = module.exports = function(host, port, logger) {
-    var mlt = new melted_node(host, port, logger);
+exports = module.exports = function(host, port, logger, timeout) {
+    var mlt = new melted_node(host, port, logger, timeout);
     return mlt;
 };
