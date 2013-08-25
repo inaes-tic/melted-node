@@ -38,31 +38,28 @@ function melted_node(host, port, logger, timeout) {
 };
 
 melted_node.prototype.addPendingData = function(data) {
-    var self = this;
     if (data.match(/[^\s]/)) {
-        self.pending.push(data);
-        self.logger.warn("[addPendingData] Got " + self.pending.length + " data pending.");
-        self.logger.warn("[addPendingData] Data: " + data);
+        this.pending.push(data);
+        this.logger.warn("[addPendingData] Got " + this.pending.length + " data pending.");
+        this.logger.warn("[addPendingData] Data: " + data);
     }
 };
 
 melted_node.prototype.addCommandToQueue = function(command) {
-    var self = this;
-    self.logger.debug("[addCommandToQueue] Invoked for command: " + command);
+    this.logger.debug("[addCommandToQueue] Invoked for command: " + command);
     var com = [];
     var result = Q.defer();
     com[0] = command;
     com[1] = result;
-    self.commands.push(com);
+    this.commands.push(com);
     return result.promise;
 };
 
 melted_node.prototype.connect = function() {
-    var self = this;
-    if (!self.started)
-        self.started = true;
+    if (!this.started)
+        this.started = true;
     var deferred = Q.defer();
-    self.connects.take(self._connect.bind(self, deferred));
+    this.connects.take(this._connect.bind(this, deferred));
     return deferred.promise;
 };
 
@@ -84,19 +81,18 @@ melted_node.prototype._connect = function(deferred) {
       Event: 'connect'#
       Emitted when a socket connection is successfully established. See connect().
     */
-    var self = this;
-    this.server.on("connect", function() {
-        self.logger.info("[connect] Connecting to Melted Server..." );
-        deferred.resolve(self.expect("100 VTR Ready").then(function() {
-            self.logger.info("[connect] Connected to Melted Server" );
-            self.server.removeAllListeners('close');
-            self.server.addListener('close', self.close.bind(self));
-            self.connected = true;
-            //            self.connecting = false;
-            self.connects.leave();
-            self.processQueue();
-        }));
-    });
+    this.server.on("connect", (function() {
+        this.logger.info("[connect] Connecting to Melted Server..." );
+        deferred.resolve(this.expect("100 VTR Ready").then((function() {
+            this.logger.info("[connect] Connected to Melted Server" );
+            this.server.removeAllListeners('close');
+            this.server.addListener('close', this.close.bind(this));
+            this.connected = true;
+            //this.connecting = false;
+            this.connects.leave();
+            this.processQueue();
+        }).bind(this)));
+    }).bind(this));
 
     /*
       Event: 'data'#
@@ -121,11 +117,11 @@ melted_node.prototype._connect = function(deferred) {
       amounts of data, with the caveat that the user is required to
       end() their side now.
     */
-    this.server.on('end', function () {
-        if (self.pending.length)
-            self.logger.error("[connect] Got 'end' but still data pending");
-        self.logger.info("[connect] Melted Server connection ended");
-    });
+    this.server.on('end', (function () {
+        if (this.pending.length)
+            this.logger.error("[connect] Got 'end' but still data pending");
+        this.logger.info("[connect] Melted Server connection ended");
+    }).bind(this));
 
     /*
       Event: 'timeout'#
@@ -146,10 +142,10 @@ melted_node.prototype._connect = function(deferred) {
       Emitted when an error occurs. The 'close' event will be called
       directly following self event.
     */
-    this.server.on('error', function(err) {
-        self.logger.error("[connect] Could not connect to Melted Server", err);
+    this.server.on('error', (function(err) {
+        this.logger.error("[connect] Could not connect to Melted Server", err);
         deferred.reject(err);
-    });
+    }).bind(this));
 
     /*
       Event: 'close'#
@@ -158,70 +154,64 @@ melted_node.prototype._connect = function(deferred) {
       a boolean which says if the socket was closed due to a
       transmission error.
     */
-    this.server.once('close', function(had_error) {
-        self.close(had_error);
-        self.connects.leave();
-    });
+    this.server.once('close', (function(had_error) {
+        this.close(had_error);
+        this.connects.leave();
+    }).bind(this));
 };
 
 melted_node.prototype.close = function(had_error) {
-    var self = this;
     if (had_error)
-        self.logger.error("[connect] Melted Server connection closed with error");
+        this.logger.error("[connect] Melted Server connection closed with error");
     else
-        self.logger.info("[connect] Melted Server connection closed");
-    self.connected = false;
-    self.server.removeAllListeners();
-    //    self.server.destroy();
-    delete self.server;
-    setTimeout(self.connect.bind(self), 500);
+        this.logger.info("[connect] Melted Server connection closed");
+    this.connected = false;
+    this.server.removeAllListeners();
+    //    this.server.destroy();
+    delete this.server;
+    setTimeout(this.connect.bind(this), 500);
 };
 
 melted_node.prototype.disconnect = function() {
-    var self = this;
     var deferred = Q.defer();
-    self.connects.take(self._disconnect.bind(self, deferred));
+    this.connects.take(this._disconnect.bind(this, deferred));
     return deferred.promise;
 };
 
 melted_node.prototype._disconnect = function(deferred) {
-    var self = this;
-
-    self.logger.info("[disconnect] Disconnecting from Melted Server");
-    self.server.removeAllListeners();
-    self.server.once('close', function(had_error) {
-        self.connected = false;
-        delete self.server;
+    this.logger.info("[disconnect] Disconnecting from Melted Server");
+    this.server.removeAllListeners();
+    this.server.once('close', (function(had_error) {
+        this.connected = false;
+        delete this.server;
         deferred.resolve("Server Disconnected");
-        self.logger.info("[disconnect] Disconnected from Melted Server");
-        self.connects.leave();
-    });
-    self.server.destroy();
+        this.logger.info("[disconnect] Disconnected from Melted Server");
+        this.connects.leave();
+    }).bind(this));
+    this.server.destroy();
 };
 
 melted_node.prototype.sendPromisedCommand = function(command) {
-    var self = this;
-    self.logger.debug("[sendPromisedCommand] Invoked for command: " + command);
+    this.logger.debug("[sendPromisedCommand] Invoked for command: " + command);
 
-    var result = self.addCommandToQueue(command);
+    var result = this.addCommandToQueue(command);
 
-    if (!self.connected) {
-        if (!self.started)
-            self.connect();
+    if (!this.connected) {
+        if (!this.started)
+            this.connect();
     }
     return result;
 };
 
 melted_node.prototype.sendCommand = function(command, onSuccess, onError) {
-    var self = this;
-    self.logger.debug("[sendCommand] Invoked for command: " + command);
+    this.logger.debug("[sendCommand] Invoked for command: " + command);
 
-    var result = self.addCommandToQueue(command);
+    var result = this.addCommandToQueue(command);
     result.then(onSuccess, onError).done();
 
-    if (!self.connected) {
-        if (!self.started)
-            self.connect();
+    if (!this.connected) {
+        if (!this.started)
+            this.connect();
     }
 };
 
