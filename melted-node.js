@@ -309,7 +309,7 @@ melted_node.prototype.sendPromisedCommand = function(command) {
     return result;
 };
 
-melted_node.prototype.sendCommand = function(command, onSuccess, onError) {
+melted_node.prototype.sendCommand = function(command, expected, onSuccess, onError) {
     this.logger.debug("[sendCommand] Invoked for command: " + command);
 
     var result = this.addCommandToQueue(command);
