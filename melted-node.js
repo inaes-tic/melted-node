@@ -49,6 +49,11 @@ melted_node.prototype.processResponse = function() {
         this.logger.warn("I got a response, but no pending commands. I'll ignore it");
         this.response = '';
     }
+    if(!this.commands.length) {
+        // nothing to do
+        this.logger.info("[processResponse] no pending commands");
+        return;
+    }
     var spl = this.response.split("\r\n", 2);
     this.logger.debug("splitted length: %d", spl.length);
     if(spl[1] === undefined) {
