@@ -83,15 +83,21 @@ melted_node.prototype._connect = function(deferred) {
     */
     this.server.addListener("connect", (function() {
         this.logger.info("[connect] Connecting to Melted Server..." );
-        deferred.resolve(this.expect("100 VTR Ready").then((function() {
-            this.logger.info("[connect] Connected to Melted Server" );
-            this.server.removeAllListeners('close');
-            this.server.addListener('close', this.close.bind(this));
-            this.connected = true;
-            //this.connecting = false;
-            this.connects.leave();
-            this.processQueue();
-        }).bind(this)));
+        // this listener will wait until the connection got a "100 VTR Ready" string,
+        // answer to the 'connect' request, and go on. This depends on the fact
+        // that the dataReceived listener has been registered first
+        var readyListener = (function() {
+            var readyStr = "100 VTR Ready\r\n";
+            var match = this.response.match(readyStr);
+            if(match) {
+                this.response = this.response.replace(readyStr, '');
+                this.server.removeListener('data', readyListener)
+                this.connected = true;
+                this.connects.leave();
+                deferred.resolve('connected');
+            }
+        }).bind(this);
+        this.server.addListener('data', readyListener);
     }).bind(this));
 
     /*
