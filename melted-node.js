@@ -104,7 +104,7 @@ melted_node.prototype.processResponse = function() {
         }
     } else if(status.match(/^[45][0-9][0-9]/)) {
         // we've got an error
-        deferred.reject(status);
+        deferred.reject(new Error(status));
         cont = true;
     } else {
         // I don't know what we have here, but we're never going to be able to process it. Lose it
