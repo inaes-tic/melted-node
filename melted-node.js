@@ -130,6 +130,7 @@ melted_node.prototype.addCommandToQueue = function(command) {
     com[0] = command;
     com[1] = result;
     this.commands.push(com);
+    this.server.write(command + "\r\n");
     return result.promise;
 };
 
