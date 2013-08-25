@@ -164,6 +164,7 @@ melted_node.prototype._connect = function(deferred) {
                 this.response = this.response.replace(readyStr, '');
                 this.server.removeListener('data', readyListener)
                 this.connected = true;
+                this.server.addListener('close', this.close.bind(this));
                 this.connects.leave();
                 deferred.resolve('connected');
                 this.processResponse();
