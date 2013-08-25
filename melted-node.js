@@ -90,6 +90,11 @@ melted_node.prototype._connect = function(deferred) {
             var readyStr = "100 VTR Ready\r\n";
             var match = this.response.match(readyStr);
             if(match) {
+                if(match.index != 0) {
+                    // got a match, but it's not first, weird
+                    this.logger.warn("Got a match for ready string, but was not the first we got from the server: (%s)", this.response);
+                    this.response = this.response.substr(match.index);
+                }
                 this.response = this.response.replace(readyStr, '');
                 this.server.removeListener('data', readyListener)
                 this.connected = true;
