@@ -183,7 +183,7 @@ melted_node.prototype._connect = function(deferred) {
                 this.processResponse();
                 // Once again, this depends on the fact
                 // that the dataReceived listener has been registered first
-                this.addListener('data', this.processResponse.bind(this));
+                this.server.addListener('data', this.processResponse.bind(this));
             }
         }).bind(this);
         this.server.addListener('data', readyListener);
