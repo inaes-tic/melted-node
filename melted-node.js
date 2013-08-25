@@ -43,7 +43,7 @@ melted_node.prototype.dataReceived = function(data) {
 };
 
 melted_node.prototype.processResponse = function() {
-    this.logger.info('[processResponse] try to process """%s"""', this.response);
+    this.logger.info('[processResponse] try to process "%s"', this.response);
     this.logger.debug("pending commands length: %d", this.commands.length);
     if(this.response.length && !this.commands.length) {
         this.logger.warn("I got a response, but no pending commands. I'll ignore it");
