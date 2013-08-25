@@ -58,6 +58,7 @@ melted_node.prototype.processResponse = function() {
     this.logger.debug("splitted length: %d", spl.length);
     if(spl[1] === undefined) {
         // no newlines yet, wait for next packet
+        this.logger.info("[processResponse] status line not completely received yet");
         return;
     }
 
@@ -69,24 +70,31 @@ melted_node.prototype.processResponse = function() {
     var cont = false;
     if(status == "200 OK") {
         // Just an OK message.
+        this.logger.debug("it's an OK");
         this.response = this.response.substr(status.length + 2);
         this.commands.shift();
         deferred.resolve(true);
     } else if(status == "201 OK") {
+        this.logger.debug("multi-lined response");
         // multi-lined response. wait for "\r\n\r\n"
         var splitted = this.response.split("\r\n\r\n");
         if(splitted[1] !== undefined) {
+            this.logger.debug("multi-lined response is ready");
             // "201 OK\r\nfoo\r\n\r\n".split("\r\n\r\n") ==> ['201 OK\r\nfoo', ''], so ...split(..)[1] === undefined is false
             this.commands.shift();
             var ret = splitted[0];
             this.response = splitted.slice(1).join("\r\n\r\n");
             deferred.resolve(ret);
             cont = true;
+        } else {
+            this.logger.debug("multi-lined response is not ready yet");
         }
     } else if(status == "202 OK") {
+        this.logger.debug("single-lined response");
         // one-line response. wait for "\r\n"
         var splitted = this.response.split("\r\n");
         if(splitted[2] !== undefined) {
+            this.logger.debug("single-lined response is ready");
             // "202 OK\r\nfoo\r\n".split("\r\n") ==> ['202 OK', 'foo', ''], so ...split(..)[2] === undefined is false
             // so I've got the whole response
             this.commands.shift();
@@ -101,10 +109,12 @@ melted_node.prototype.processResponse = function() {
             */
             deferred.resolve(ret.join("\r\n")); // "202 OK\r\nfoo" (drops the final \r\n)
             cont = true;
+        } else {
+            this.logger.debug("single-lined response is not ready yet");
         }
     } else if(status.match(/^[45][0-9][0-9]/)) {
         // we've got an error
-        this.logger.warn("[processResponse] I got an error");
+        this.logger.warn("[processResponse] I got an error: %s", status);
         this.commands.shift();
         this.response = this.response.substr(status.length + 2);
         deferred.reject(new Error(status));
@@ -121,6 +131,7 @@ melted_node.prototype.processResponse = function() {
     if(cont && this.response) {
         setTimeout(this.processResponse.bind(this), 0);
     }
+    this.logger.debug("resulting buffer: %s", this.response);
 };
 
 melted_node.prototype.addCommandToQueue = function(command) {
