@@ -42,6 +42,72 @@ melted_node.prototype.dataReceived = function(data) {
     this.response += data;
 };
 
+melted_node.prototype.processResponse = function() {
+    this.logger.info('[processResponse] try to process """%s"""', this.response);
+    this.logger.debug("pending commands length: %d", this.commands.length);
+    if(this.response.length && !this.commands.length) {
+        this.logger.warn("I got a response, but no pending commands. I'll ignore it");
+        this.response = '';
+    }
+    var status = this.response.split("\r\n", 1)[0];
+    this.logger.debug("Processing status: %s", status);
+    if(status === undefined) {
+        // no newlines yet, wait for next packet
+        return;
+    }
+    var com = this.commands[0];
+    var deferred = com[1];
+    var cont = false;
+    if(status == "200 OK") {
+        // Just an OK message.
+        this.response = this.response.replace(status + "\r\n");
+        this.commands.shift();
+        deferred.resolve(true);
+    } else if(status == "201 OK") {
+        // multi-lined response. wait for "\r\n\r\n"
+        var splitted = this.response.split("\r\n\r\n");
+        if(splitted[1] !== undefined) {
+            // "201 OK\r\nfoo\r\n\r\n".split("\r\n\r\n") ==> ['201 OK\r\nfoo', ''], so ...split(..)[1] === undefined is false
+            this.commands.shift();
+            var ret = splitted[0];
+            this.response = splitted.slice(1).join("\r\n\r\n");
+            deferred.resolve(ret);
+            cont = true;
+        }
+    } else if(status == "202 OK") {
+        // one-line response. wait for "\r\n"
+        var splitted = this.response.split("\r\n");
+        if(splitted[2] !== undefined) {
+            // "202 OK\r\nfoo\r\n".split("\r\n") ==> ['202 OK', 'foo', ''], so ...split(..)[2] === undefined is false
+            // so I've got the whole response
+            this.commands.shift();
+            var ret = splitted.slice(0, 2);  // ['202 OK', 'foo']
+            // re-join the rest of the buffer
+            this.response = splitted.slice(2).join("\r\n");
+            /* so in the case we had "202 OK\r\nfoo\r\nbar", this will become "bar".
+               IF we had "202 OK\r\nfoo\r\n\r\n", this will become "\r\n",
+               but this should *not* happen. In any case, the "header" of the
+               next response will not be recognized and will be dropped, so the
+               process won't brake (but a warning will be logged
+            */
+            deferred.resolve(ret.join("\r\n")); // "202 OK\r\nfoo" (drops the final \r\n)
+            cont = true;
+        }
+    } else if(status.match(/^[45][0-9][0-9]/)) {
+        // we've got an error
+        deferred.reject(status);
+        cont = true;
+    } else {
+        // I don't know what we have here, but we're never going to be able to process it. Lose it
+        this.logger.warn("I got an unknown beginning of response. I'm ignoring it: \"%s\"", status);
+        // drop the offending line
+        this.response = this.response.replace(status + "\r\n", "");
+        cont = true;
+    }
+
+    // if we processed something and still have data to process, have another go
+    if(cont && this.response) {
+        setTimeout(this.processResponse.bind(this), 0);
     }
 };
 
