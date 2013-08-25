@@ -49,12 +49,16 @@ melted_node.prototype.processResponse = function() {
         this.logger.warn("I got a response, but no pending commands. I'll ignore it");
         this.response = '';
     }
-    var status = this.response.split("\r\n", 1)[0];
-    this.logger.debug("Processing status: %s", status);
-    if(status === undefined) {
+    var spl = this.response.split("\r\n", 2);
+    this.logger.debug("splitted length: %d", spl.length);
+    if(spl[1] === undefined) {
         // no newlines yet, wait for next packet
         return;
     }
+
+    var status = spl[0];
+    this.logger.debug("Processing status: %s", status);
+
     var com = this.commands[0];
     var deferred = com[1];
     var cont = false;
