@@ -37,11 +37,11 @@ function melted_node(host, port, logger, timeout) {
     });
 };
 
-melted_node.prototype.addPendingData = function(data) {
-    if (data.match(/[^\s]/)) {
-        this.pending.push(data);
-        this.logger.warn("[addPendingData] Got " + this.pending.length + " data pending.");
-        this.logger.warn("[addPendingData] Data: " + data);
+melted_node.prototype.dataReceived = function(data) {
+    this.logger.info("[dataReceived] Got: " + data);
+    this.response += data;
+};
+
     }
 };
 
@@ -81,7 +81,7 @@ melted_node.prototype._connect = function(deferred) {
       Event: 'connect'#
       Emitted when a socket connection is successfully established. See connect().
     */
-    this.server.on("connect", (function() {
+    this.server.addListener("connect", (function() {
         this.logger.info("[connect] Connecting to Melted Server..." );
         deferred.resolve(this.expect("100 VTR Ready").then((function() {
             this.logger.info("[connect] Connected to Melted Server" );
@@ -104,7 +104,7 @@ melted_node.prototype._connect = function(deferred) {
       Note that the data will be lost if there is no listener when a
       Socket emits a 'data' event.
     */
-    this.server.addListener('data', this.addPendingData.bind(this));
+    this.server.addListener('data', this.dataReceived.bind(this));
 
     /*
       Event: 'end'#
