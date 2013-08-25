@@ -69,7 +69,7 @@ melted_node.prototype.processResponse = function() {
     var cont = false;
     if(status == "200 OK") {
         // Just an OK message.
-        this.response = this.response.replace(status + "\r\n");
+        this.response = this.response.substr(status.length + 2);
         this.commands.shift();
         deferred.resolve(true);
     } else if(status == "201 OK") {
@@ -113,7 +113,7 @@ melted_node.prototype.processResponse = function() {
         // I don't know what we have here, but we're never going to be able to process it. Lose it
         this.logger.warn("I got an unknown beginning of response. I'm ignoring it: \"%s\"", status);
         // drop the offending line
-        this.response = this.response.replace(status + "\r\n", "");
+        this.response = this.response.substr(status.length + 2);
         cont = true;
     }
 
