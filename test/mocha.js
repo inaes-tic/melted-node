@@ -222,11 +222,11 @@ describe('disconnect', function() {
     this.timeout(0);
     it('having commands in queue and disconnect shouldnt throw errors', function(done) {
         assert.doesNotThrow(function() {
-            mlt.sendCommand("usta u0", "202 OK");
-            mlt.sendCommand("usta u0", "202 OK");
-            mlt.sendCommand("usta u0", "202 OK");
-            mlt.sendCommand("usta u0", "202 OK");
-            mlt.sendCommand("usta u0", "202 OK");
+            mlt.sendCommand("usta u0", "202 OK", function(){}, function(){});
+            mlt.sendCommand("usta u0", "202 OK", function(){}, function(){});
+            mlt.sendCommand("usta u0", "202 OK", function(){}, function(){});
+            mlt.sendCommand("usta u0", "202 OK", function(){}, function(){});
+            mlt.sendCommand("usta u0", "202 OK", function(){}, function(){});
             mlt.disconnect().then(function(result) {
                 console.log(result);
             }).fail(function(error) {
