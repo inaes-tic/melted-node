@@ -292,6 +292,10 @@ melted_node.prototype._disconnect = function(deferred) {
         this.connected = false;
         delete this.server;
         deferred.resolve("Server Disconnected");
+        this.commands.forEach(function(command) {
+            command[1].reject(new Error("Server Disconnected"));
+        });
+        this.commands = [];
         this.logger.info("[disconnect] Disconnected from Melted Server");
         this.connects.leave();
     }).bind(this));
