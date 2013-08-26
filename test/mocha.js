@@ -237,4 +237,11 @@ describe('disconnect', function() {
     it('--disconnected', function() {
         assert.equal(mlt.connected, false);
     });
+    it("reconnecting shouldn't throw errors", function(done) {
+        mlt.connect().then(function() {
+            mlt.sendPromisedCommand("usta u0", "202 OK").then(function(){
+                done();
+            }, done);
+        });
+    });
 });
