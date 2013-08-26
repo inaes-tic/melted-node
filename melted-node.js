@@ -115,6 +115,7 @@ melted_node.prototype.processResponse = function() {
     } else if(status.match(/^[45][0-9][0-9]/)) {
         // we've got an error
         this.logger.warn("[processResponse] I got an error: %s", status);
+        this.errors.push(status);
         this.commands.shift();
         this.response = this.response.substr(status.length + 2);
         deferred.reject(new Error(status));
