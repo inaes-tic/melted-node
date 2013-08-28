@@ -5,17 +5,17 @@ var net       = require('net')
 ,   winston   = require('winston');
 
 function melted_node(host, port, logger, timeout) {
-    this.server     = false;
-    this.errors     = [];
-    this.pending    = [];
-    this.connected  = false;
-    this.commands   = [];
-    this.connects   = semaphore(1);
-    this.response   = '';
-    this.started    = false;
-    this.timeout    = timeout || 2000;
-    this.host       = host || 'localhost';
-    this.port       = port || 5250;
+    this.server     = false;  // connection to melted
+    this.errors     = [];     // error messages returned by melted
+    this.pending    = [];     // commands not yet sent to melted
+    this.connected  = false;  // true if connection to server has been established
+    this.commands   = [];     // commands already sent to melted, awaiting response
+    this.connects   = semaphore(1);  // manages connection access (for use with .connect and .disconnect)
+    this.response   = '';     // received response text still unprocessed
+    this.started    = false;  // true if connection workflow has started
+    this.timeout    = timeout || 2000;     // timeout time
+    this.host       = host || 'localhost'; // melted host address
+    this.port       = port || 5250;        // melted port address
     this.logger     = logger || new (winston.Logger)({
         transports: [
             new winston.transports.Console({
