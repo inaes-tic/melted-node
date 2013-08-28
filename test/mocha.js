@@ -238,6 +238,7 @@ describe('disconnect', function() {
         assert.equal(mlt.connected, false);
     });
     it("reconnecting shouldn't throw errors", function(done) {
+        mlt.sendPromisedCommand("usta u0", "202 OK");
         mlt.connect().then(function() {
             mlt.sendPromisedCommand("usta u0", "202 OK").then(function(){
                 done();
