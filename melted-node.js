@@ -2,7 +2,10 @@ var net       = require('net')
 ,   Q         = require('q')
 ,   moment    = require('moment')
 ,   semaphore = require('semaphore')
-,   winston   = require('winston');
+,   winston   = require('winston')
+,   events    = require('events')
+,   util     = require('util')
+;
 
 function melted_node(host, port, logger, timeout) {
     this.server     = false;  // connection to melted
@@ -35,7 +38,10 @@ function melted_node(host, port, logger, timeout) {
         ],
         exitOnError: false
     });
+    events.EventEmitter.call(this);
 };
+
+util.inherits(melted_node, events.EventEmitter);
 
 melted_node.prototype.dataReceived = function(data) {
     this.logger.info("[dataReceived] Got: " + data);
