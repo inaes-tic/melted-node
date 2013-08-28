@@ -335,13 +335,6 @@ melted_node.prototype.sendPromisedCommand = function(command) {
     return result;
 };
 
-melted_node.prototype.sendCommand = function(command, expected, onSuccess, onError) {
-    this.logger.debug("[sendCommand] Invoked for command: " + command);
-
-    var result = this.addCommandToQueue(command);
-    result.then(onSuccess, onError).done();
-};
-
 exports = module.exports = function(host, port, logger, timeout) {
     var mlt = new melted_node(host, port, logger, timeout);
     return mlt;
