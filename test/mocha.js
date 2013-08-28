@@ -51,19 +51,19 @@ describe('connects', function(){
 describe('commands', function(){
     describe('#bad and good commands', function(){
         it('--should fail with unknown commands', function(done){
-            mlt.sendPromisedCommand("no_such_command in my town").then(
+            mlt.sendCommand("no_such_command in my town").then(
                 function(val){
                     return done(new Error(val));
                 }, function(){ done(); });
         });
         it('--"load" should pass', function(done) {
-            mlt.sendPromisedCommand("load u0 ./test/videos/SMPTE_Color_Bars_01.mp4").then(function(){done();}).done();
+            mlt.sendCommand("load u0 ./test/videos/SMPTE_Color_Bars_01.mp4").then(function(){done();}).done();
         });
         it('-- "play" should pass (after "load")', function(done) {
-            mlt.sendPromisedCommand("play u0").then(function(){ done() }).done();
+            mlt.sendCommand("play u0").then(function(){ done() }).done();
         });
         it('-- "append" shuold pass', function(done) {
-            mlt.sendPromisedCommand("apnd u0 ./test/videos/SMPTE_Color_Bars_02.mp4").then(function() { done() }).done();
+            mlt.sendCommand("apnd u0 ./test/videos/SMPTE_Color_Bars_02.mp4").then(function() { done() }).done();
         });
     });
 });
@@ -71,8 +71,8 @@ describe('commands', function(){
 describe('queue', function() {
     describe('#add commands after queue processed', function(){
         before(function(done) {
-            mlt.sendPromisedCommand("pause u0");
-            mlt.sendPromisedCommand("play u0");
+            mlt.sendCommand("pause u0");
+            mlt.sendCommand("play u0");
             setTimeout(function() {
                 done();
             }, 1000);
@@ -88,7 +88,7 @@ describe('promise handlers', function() {
         var errorReceived = false;
         var responseReceived = false;
         before(function(done) {
-            mlt.sendPromisedCommand("hohoho").then(undefined, callback);
+            mlt.sendCommand("hohoho").then(undefined, callback);
             function callback(error) {
                 console.error("TEST: Error: " + error);
                 errorReceived = true;
@@ -96,7 +96,7 @@ describe('promise handlers', function() {
             };
         });
         before(function(done) {
-            mlt.sendPromisedCommand("list u0").then(callback);
+            mlt.sendCommand("list u0").then(callback);
             function callback(response) {
                 console.log("TEST: Response: " + response);
                 responseReceived = true;
@@ -122,7 +122,7 @@ describe('promised command', function() {
         var error2Received = false;
         var response2Received = false;
         before(function(done) {
-            var result = mlt.sendPromisedCommand("jijijiji", "200 OK");
+            var result = mlt.sendCommand("jijijiji", "200 OK");
             result.then(function(response) {
                 console.log("TEST: Response: " + response);
                 response1Received = true;
@@ -134,7 +134,7 @@ describe('promised command', function() {
             });
         });
         before(function(done) {
-            var result = mlt.sendPromisedCommand("uls", "201 OK");
+            var result = mlt.sendCommand("uls", "201 OK");
             result.then(function(response) {
                 console.log("TEST: Response: " + response);
                 response2Received = true;
@@ -166,8 +166,8 @@ describe('promised command', function() {
 describe('xml', function() {
     describe('#add xml file with filter', function(){
         before(function(done) {
-            mlt.sendPromisedCommand("load u0 ./test/melted-test.xml");
-            mlt.sendPromisedCommand("play u0");
+            mlt.sendCommand("load u0 ./test/melted-test.xml");
+            mlt.sendCommand("play u0");
             setTimeout(function() {
                 done();
             }, 1000);
@@ -188,14 +188,14 @@ describe('stress', function() {
                     clearInterval(this);
                     done();
                 }
-                mlt.sendPromisedCommand("usta u0").then(function(response) {
+                mlt.sendCommand("usta u0").then(function(response) {
                     console.log("USTA:" + response);
                     console.log("PASADA NRO: " + count);
                 }, function(error) {
                     console.error("USTA: " + error);
                 });
                 console.log("mando goto");
-                mlt.sendPromisedCommand("goto u0 " + count * 3).then(function(response) {
+                mlt.sendCommand("goto u0 " + count * 3).then(function(response) {
                     console.log("GOTO: " + response);
                 }, function(error) {
                     console.error("GOTO: " + error);
@@ -207,7 +207,7 @@ describe('stress', function() {
             assert.equal(mlt.errors.length, 3);
         });
         after(function(done) {
-            mlt.sendPromisedCommand("stop u0", "200 OK").fin(function(result) {
+            mlt.sendCommand("stop u0", "200 OK").fin(function(result) {
                 done();
             });
         });
@@ -218,11 +218,11 @@ describe('disconnect', function() {
     this.timeout(0);
     it('having commands in queue and disconnect shouldnt throw errors', function(done) {
         assert.doesNotThrow(function() {
-            mlt.sendPromisedCommand("usta u0");
-            mlt.sendPromisedCommand("usta u0");
-            mlt.sendPromisedCommand("usta u0");
-            mlt.sendPromisedCommand("usta u0");
-            mlt.sendPromisedCommand("usta u0");
+            mlt.sendCommand("usta u0");
+            mlt.sendCommand("usta u0");
+            mlt.sendCommand("usta u0");
+            mlt.sendCommand("usta u0");
+            mlt.sendCommand("usta u0");
             mlt.disconnect().then(function(result) {
                 console.log(result);
             }).fail(function(error) {
@@ -234,9 +234,9 @@ describe('disconnect', function() {
         assert.equal(mlt.connected, false);
     });
     it("reconnecting shouldn't throw errors", function(done) {
-        mlt.sendPromisedCommand("usta u0", "202 OK");
+        mlt.sendCommand("usta u0", "202 OK");
         mlt.connect().then(function() {
-            mlt.sendPromisedCommand("usta u0", "202 OK").then(function(){
+            mlt.sendCommand("usta u0", "202 OK").then(function(){
                 done();
             }, done);
         });

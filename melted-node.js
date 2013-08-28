@@ -327,7 +327,7 @@ melted_node.prototype._disconnect = function(deferred) {
     this.server.destroy();
 };
 
-melted_node.prototype.sendPromisedCommand = function(command) {
+melted_node.prototype.sendCommand = function(command) {
     this.logger.debug("[sendPromisedCommand] Invoked for command: " + command);
 
     var result = this.addCommandToQueue(command);
