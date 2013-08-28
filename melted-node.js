@@ -135,14 +135,31 @@ melted_node.prototype.processResponse = function() {
     this.logger.debug("resulting buffer: %s", this.response);
 };
 
+melted_node.prototype.processQueue = function() {
+    if(!this.connected)
+        return;
+    while(this.pending.length) {
+        var com = this.pending.shift();
+        var command = com[0];
+        this.commands.push(com);
+        this.server.write(command + "\r\n");
+    }
+};
+
 melted_node.prototype.addCommandToQueue = function(command) {
     this.logger.debug("[addCommandToQueue] Invoked for command: " + command);
     var com = [];
     var result = Q.defer();
     com[0] = command;
     com[1] = result;
-    this.commands.push(com);
-    this.server.write(command + "\r\n");
+    this.pending.push(com);
+
+    if (!this.connected) {
+        if (!this.started) {
+            this.connect();
+        }
+    }
+    this.processQueue();
     return result.promise;
 };
 
@@ -193,6 +210,7 @@ melted_node.prototype._connect = function(deferred) {
                 this.connected = true;
                 this.connects.leave();
                 deferred.resolve('connected');
+                this.processQueue();
                 this.processResponse();
                 // Once again, this depends on the fact
                 // that the dataReceived listener has been registered first
@@ -308,10 +326,6 @@ melted_node.prototype.sendPromisedCommand = function(command) {
 
     var result = this.addCommandToQueue(command);
 
-    if (!this.connected) {
-        if (!this.started)
-            this.connect();
-    }
     return result;
 };
 
@@ -320,11 +334,6 @@ melted_node.prototype.sendCommand = function(command, expected, onSuccess, onErr
 
     var result = this.addCommandToQueue(command);
     result.then(onSuccess, onError).done();
-
-    if (!this.connected) {
-        if (!this.started)
-            this.connect();
-    }
 };
 
 exports = module.exports = function(host, port, logger, timeout) {
