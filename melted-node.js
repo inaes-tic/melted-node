@@ -79,7 +79,7 @@ melted_node.prototype.processResponse = function() {
         this.logger.debug("it's an OK");
         this.response = this.response.substr(status.length + 2);
         this.commands.shift();
-        deferred.resolve(true);
+        deferred.resolve(status);
     } else if(status == "201 OK") {
         this.logger.debug("multi-lined response");
         // multi-lined response. wait for "\r\n\r\n"
