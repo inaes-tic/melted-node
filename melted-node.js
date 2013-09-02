@@ -44,12 +44,14 @@ function melted_node(host, port, logger, timeout) {
 util.inherits(melted_node, events.EventEmitter);
 
 melted_node.prototype.dataReceived = function(data) {
-    this.logger.info("[dataReceived] Got: " + data);
+    this.logger.info("[dataReceived] Got: " + data.length + " bytes");
+    this.logger.debug("[dataReceived] received data: " + data);
     this.response += data;
 };
 
 melted_node.prototype.processResponse = function() {
-    this.logger.info('[processResponse] try to process "%s"', this.response);
+    this.logger.info('[processResponse] try to process response');
+    this.logger.debug('[processResponse] response to process: "%s"', this.response);
     this.logger.debug("pending commands length: %d", this.commands.length);
     if(this.response.length && !this.commands.length) {
         this.logger.warn("I got a response, but no pending commands. I'll ignore it");
@@ -134,19 +136,27 @@ melted_node.prototype.processResponse = function() {
         cont = true;
     }
 
+    this.logger.debug("if cont(%s) and response(%d), continue", ''+cont, this.response.length);
     // if we processed something and still have data to process, have another go
     if(cont && this.response) {
+        this.logger.debug("calling processResponse again");
         setTimeout(this.processResponse.bind(this), 0);
     }
+    this.logger.info("remaining data length: %d", this.response.length);
     this.logger.debug("resulting buffer: %s", this.response);
 };
 
 melted_node.prototype.processQueue = function() {
-    if(!this.connected)
+    this.logger.debug("[processQueue] called with %d commands pending", this.pending.length);
+    if(!this.connected) {
+        this.logger.debug("[processQueue] ignored, not connected");
         return;
+    }
+    this.logger.info("[processQueue] processing. %d commands pending", this.pending.length);
     while(this.pending.length) {
         var com = this.pending.shift();
         var command = com[0];
+        this.logger.debug("sending %s", command);
         this.commands.push(com);
         this.server.write(command + "\r\n");
     }
