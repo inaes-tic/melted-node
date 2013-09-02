@@ -1,4 +1,5 @@
 var assert = require("assert");
+_ = require("underscore");
 
 var melted_node = require('../melted-node');
 var mlt = new melted_node('localhost', 5250);
@@ -211,7 +212,68 @@ describe('stress', function() {
                 done();
             });
         });
-    }) ;
+    });
+
+    describe("# send 100 random commands", function() {
+        before(function(done) {
+            mlt.sendCommand("clear u0").then(function() {
+                done();
+            }, done);
+
+            // define String.startsWith
+            if (typeof String.prototype.startsWith != 'function') {
+                String.prototype.startsWith = function (str){
+                    return this.slice(0, str.length) == str;
+                };
+            }
+        });
+        after(function(done) {
+            console.log("after");
+            mlt.sendCommand("stop u0");
+            mlt.sendCommand("clear u0").then(function() { done() }, done);
+        });
+        it("-- and make sure the responses are correct", function(done){
+            this.timeout(3000);
+            var commands = [
+                ["stop u0", "200 OK"],
+                ["play u0", "200 OK"],
+                ["apnd u0 ./test/videos/SMPTE_Color_Bars_01.mp4", "200 OK"],
+                ["apnd u0 ./test/videos/SMPTE_Color_Bars_02.mp4", "200 OK"],
+                ["apnd u0 ./test/videos/SMPTE_Color_Bars_03.mp4", "200 OK"],
+                ["usta u0", "202 OK"],
+                ["unknown command", undefined, "400 Unknown command"],
+                ["list u0", "201 OK"],
+            ];
+            var count = 100;
+            var good = _.after(count, function() {
+                done();
+            });
+            var counter = 0;
+            _.range(count).forEach(function(i){
+                (function(com) {
+                    mlt.sendCommand(com[0]).then(function(res) {
+                        if(res.startsWith(com[1])) {
+                            assert.equal(counter, i);
+                            counter++;
+                            good();
+                        } else {
+                            done(new Error(res));
+                        };
+                    }, function(err) {
+                        if(com[2]) {
+                            assert.equal(counter, i);
+                            counter++;
+                            good();
+                        } else {
+                            done(err);
+                        }
+                    }).fail(function(err){
+                        done(err)
+                    });
+                })(commands[_.random(commands.length-1)]);
+            });
+        });
+    });
 });
 
 describe('disconnect', function() {
