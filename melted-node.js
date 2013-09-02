@@ -305,6 +305,7 @@ melted_node.prototype.close = function(had_error) {
 };
 
 melted_node.prototype.disconnect = function() {
+    this.started = false;
     var deferred = Q.defer();
     this.connects.take(this._disconnect.bind(this, deferred));
     return deferred.promise;
