@@ -101,6 +101,7 @@ melted_node.prototype.processResponse = function() {
     this.logger.debug("Processing status: %s", status);
 
     var com = this.commands[0];
+    this.logger.info('[processResponse] processing response for command "%s"', com[0]);
     var deferred = com[1];
     var cont = false;
     if(status == "200 OK") {
@@ -188,6 +189,7 @@ melted_node.prototype.processQueue = function() {
         this.commands.push(com);
         this.server.write(command + "\r\n");
     }
+    this.logger.info("[processQueue] now waiting responses for %d commands", this.commands.length);
 };
 
 melted_node.prototype.addCommandToQueue = function(command) {
