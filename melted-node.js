@@ -7,6 +7,8 @@ var net       = require('net')
 ,   util     = require('util')
 ;
 
+var instance_counter = 0;
+
 function melted_node(host, port, logger, timeout) {
     this.server     = false;  // connection to melted
     this.errors     = [];     // error messages returned by melted
@@ -19,7 +21,7 @@ function melted_node(host, port, logger, timeout) {
     this.timeout    = timeout || 2000;     // timeout time
     this.host       = host || 'localhost'; // melted host address
     this.port       = port || 5250;        // melted port address
-    this.logger     = logger || new (winston.Logger)({
+    this._logger     = logger || new (winston.Logger)({
         transports: [
             new winston.transports.Console({
                 colorize: true,
@@ -38,6 +40,31 @@ function melted_node(host, port, logger, timeout) {
         ],
         exitOnError: false
     });
+    this._instance = instance_counter++;
+    var self = this;
+    this.logger = {
+        _getArguments: function(args) {
+            var args = Array.prototype.slice.call(args);
+            args[0] = self._instance + ": " + args[0];
+            return args;
+        },
+        error: function() {
+            var args = this._getArguments(arguments);
+            self._logger.error.apply(self._logger, args);
+        },
+        warn: function() {
+            var args = this._getArguments(arguments);
+            self._logger.warn.apply(self._logger, args);
+        },
+        info: function() {
+            var args = this._getArguments(arguments);
+            self._logger.info.apply(self._logger, args);
+        },
+        debug: function() {
+            var args = this._getArguments(arguments);
+            self._logger.debug.apply(self._logger, args);
+        },
+    };
     events.EventEmitter.call(this);
 };
 
