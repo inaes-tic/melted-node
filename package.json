@@ -21,7 +21,8 @@
         "q"         : "0.8.x",
         "moment"    : "2.0.x", 
         "semaphore" : "1.0.x",
-        "winston"   : "0.7.x"
+        "winston"   : "0.7.x",
+        "underscore" : "1.4.x"
     },
     "devDependencies": {
         "mocha"    :  "1.7.x"
