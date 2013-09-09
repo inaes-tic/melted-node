@@ -1,5 +1,6 @@
 var assert = require("assert");
-_ = require("underscore");
+var _ = require("underscore");
+var net = require('net');
 
 var melted_node = require('../melted-node');
 var mlt = new melted_node('localhost', 5250);
@@ -301,6 +302,37 @@ describe('disconnect', function() {
             mlt.sendCommand("usta u0", "202 OK").then(function(){
                 done();
             }, done);
+        });
+    });
+});
+
+describe.only("fake melted", function() {
+    var self = this;
+    before(function(done) {
+        // just create a server that sends a melted "ready" message and then responds to nothing
+        self.mlt_mock = net.createServer(function(c) {
+            c.write("100 VTR Ready\r\n");
+        });
+        self.mlt_mock.listen(2222, function() { done() });
+        mlt = new melted_node('localhost', 2222);
+    });
+    after(function(done) {
+        server.close(function() { done() });
+    });
+    describe("--timeouts", function() {
+        this.timeout(2200);
+        beforeEach(function(done) {
+            mlt.connect().then(function() { done() }).done();
+        });
+        afterEach(function(done) {
+            mlt.disconnect().then(function() { done() }).done();
+        });
+        it("# should timeout after sending a command and waiting 2 seconds", function(done) {
+            var r = mlt.sendCommand("USTA U0").then(function() {
+                done(new Error("Got a response, and should have timed out!"));
+            }).fail(function() {
+                done();
+            });
         });
     });
 });
