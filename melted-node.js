@@ -19,6 +19,7 @@ function melted_node(host, port, logger, timeout) {
     this.response   = '';     // received response text still unprocessed
     this.started    = false;  // true if connection workflow has started
     this.timeout    = timeout || 2000;     // timeout time
+    this.timer      = undefined;           // the timer for response timeout
     this.host       = host || 'localhost'; // melted host address
     this.port       = port || 5250;        // melted port address
     this._logger     = logger || new (winston.Logger)({
@@ -66,14 +67,38 @@ function melted_node(host, port, logger, timeout) {
         },
     };
     events.EventEmitter.call(this);
+    this.on('response-timeout', this.responseTimeout.bind(this));
 };
 
 util.inherits(melted_node, events.EventEmitter);
+
+melted_node.prototype.responseTimeout = function() {
+    var error = new Error("Melted Server connection timed out");
+    this.logger.error(error.message);
+    if (this.connected)
+        this.server.end();
+};
+
+melted_node.prototype.setTimer = function() {
+    if(this.timer)
+        this.cancelTimer();
+    this.logger.debug('setting timer for %d milliseconds', this.timeout);
+    this.timer = setTimeout((function() {
+        this.emit('response-timeout');
+    }).bind(this), this.timeout);
+};
+
+melted_node.prototype.cancelTimer = function() {
+    this.logger.debug('canceling timer');
+    clearTimeout(this.timer);
+    this.timer = undefined;
+};
 
 melted_node.prototype.dataReceived = function(data) {
     this.logger.info("[dataReceived] Got: " + data.length + " bytes");
     this.logger.debug("[dataReceived] received data: " + data);
     this.response += data;
+    this.setTimer();
 };
 
 melted_node.prototype.sendResponse = function(response, reject) {
@@ -181,6 +206,8 @@ melted_node.prototype.processResponse = function() {
     }
     this.logger.info("remaining data length: %d", this.response.length);
     this.logger.debug("resulting buffer: %s", this.response);
+    if(!this.commands.length)
+        this.cancelTimer();
 };
 
 melted_node.prototype.processQueue = function() {
@@ -196,6 +223,9 @@ melted_node.prototype.processQueue = function() {
         this.logger.debug("sending %s", command);
         this.commands.push(com);
         this.server.write(command + "\r\n");
+        this.logger.debug("timer: %s", '' + this.timer);
+        if(!this.timer)
+            this.setTimer();
     }
     this.logger.info("[processQueue] now waiting responses for %d commands", this.commands.length);
 };
