@@ -234,6 +234,7 @@ melted_node.prototype._connect = function(deferred) {
         this.connects.leave();
         return;
     }
+    this.emit('start-connection');
 
     this.server = new net.createConnection(this.port, this.host);
     this.server.setEncoding('ascii');
@@ -269,6 +270,7 @@ melted_node.prototype._connect = function(deferred) {
                 // Once again, this depends on the fact
                 // that the dataReceived listener has been registered first
                 this.server.addListener('data', this.processResponse.bind(this));
+                this.emit('connected');
             }
         }).bind(this);
         this.server.addListener('data', readyListener);
@@ -301,6 +303,7 @@ melted_node.prototype._connect = function(deferred) {
         if (this.pending.length)
             this.logger.error("[connect] Got 'end' but still data pending");
         this.logger.info("[connect] Melted Server connection ended");
+        this.emit('disconnect');
     }).bind(this));
 
     /*
@@ -325,6 +328,7 @@ melted_node.prototype._connect = function(deferred) {
     this.server.on('error', (function(err) {
         this.logger.error("[connect] Could not connect to Melted Server", err);
         deferred.reject(err);
+        this.emit('connection-error', err);
     }).bind(this));
 
     /*
@@ -349,6 +353,7 @@ melted_node.prototype.close = function(had_error) {
     this.server.removeAllListeners();
     //    this.server.destroy();
     delete this.server;
+    this.emit('reconnect', had_error);
     setTimeout(this.connect.bind(this), 500);
 };
 
@@ -371,6 +376,7 @@ melted_node.prototype._disconnect = function(deferred) {
         });
         this.commands = [];
         this.logger.info("[disconnect] Disconnected from Melted Server");
+        this.emit('disconnect');
         this.connects.leave();
     }).bind(this));
     this.server.destroy();
