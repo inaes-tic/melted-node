@@ -375,6 +375,10 @@ melted_node.prototype._disconnect = function(deferred) {
             command[1].reject(new Error("Server Disconnected"));
         });
         this.commands = [];
+        this.pending.forEach(function(command) {
+            command[1].reject(new Error("Server Disconnected"));
+        });
+        this.pending = [];
         this.logger.info("[disconnect] Disconnected from Melted Server");
         this.emit('disconnect');
         this.connects.leave();
