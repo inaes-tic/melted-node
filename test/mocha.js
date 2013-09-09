@@ -124,7 +124,7 @@ describe('promised command', function() {
         var error2Received = false;
         var response2Received = false;
         before(function(done) {
-            var result = mlt.sendCommand("jijijiji", "200 OK");
+            var result = mlt.sendCommand("jijijiji");
             result.then(function(response) {
                 console.log("TEST: Response: " + response);
                 response1Received = true;
@@ -136,7 +136,7 @@ describe('promised command', function() {
             });
         });
         before(function(done) {
-            var result = mlt.sendCommand("uls", "201 OK");
+            var result = mlt.sendCommand("uls");
             result.then(function(response) {
                 console.log("TEST: Response: " + response);
                 response2Received = true;
@@ -209,7 +209,7 @@ describe('stress', function() {
             assert.equal(mlt.errors.length, 3);
         });
         after(function(done) {
-            mlt.sendCommand("stop u0", "200 OK").fin(function(result) {
+            mlt.sendCommand("stop u0").fin(function(result) {
                 done();
             });
         });
@@ -297,9 +297,9 @@ describe('disconnect', function() {
         assert.equal(mlt.connected, false);
     });
     it("reconnecting shouldn't throw errors", function(done) {
-        mlt.sendCommand("usta u0", "202 OK");
+        mlt.sendCommand("usta u0");
         mlt.connect().then(function() {
-            mlt.sendCommand("usta u0", "202 OK").then(function(){
+            mlt.sendCommand("usta u0").then(function(){
                 done();
             }, done);
         });
