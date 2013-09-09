@@ -76,6 +76,18 @@ melted_node.prototype.dataReceived = function(data) {
     this.response += data;
 };
 
+melted_node.prototype.sendResponse = function(response, reject) {
+    var command = this.commands.shift();
+    this.logger.debug("responding to %s (reject: %s)", command[0], reject);
+    if(reject) {
+        this.emit('command-error', response, command[0]);
+        command[1].reject(response);
+    } else {
+        this.emit('command-response', response, command[0]);
+        command[1].resolve(response);
+    }
+};
+
 melted_node.prototype.processResponse = function() {
     this.logger.info('[processResponse] try to process response');
     this.logger.debug('[processResponse] response to process: "%s"', this.response);
@@ -108,8 +120,7 @@ melted_node.prototype.processResponse = function() {
         // Just an OK message.
         this.logger.debug("it's an OK");
         this.response = this.response.substr(status.length + 2);
-        this.commands.shift();
-        deferred.resolve(status);
+        this.sendResponse(status);
         cont = true;
     } else if(status == "201 OK") {
         this.logger.debug("multi-lined response");
@@ -118,10 +129,9 @@ melted_node.prototype.processResponse = function() {
         if(splitted[1] !== undefined) {
             this.logger.debug("multi-lined response is ready");
             // "201 OK\r\nfoo\r\n\r\n".split("\r\n\r\n") ==> ['201 OK\r\nfoo', ''], so ...split(..)[1] === undefined is false
-            this.commands.shift();
             var ret = splitted[0];
             this.response = splitted.slice(1).join("\r\n\r\n");
-            deferred.resolve(ret);
+            this.sendResponse(ret);
             cont = true;
         } else {
             this.logger.debug("multi-lined response is not ready yet");
@@ -134,7 +144,6 @@ melted_node.prototype.processResponse = function() {
             this.logger.debug("single-lined response is ready");
             // "202 OK\r\nfoo\r\n".split("\r\n") ==> ['202 OK', 'foo', ''], so ...split(..)[2] === undefined is false
             // so I've got the whole response
-            this.commands.shift();
             var ret = splitted.slice(0, 2);  // ['202 OK', 'foo']
             // re-join the rest of the buffer
             this.response = splitted.slice(2).join("\r\n");
@@ -144,7 +153,7 @@ melted_node.prototype.processResponse = function() {
                next response will not be recognized and will be dropped, so the
                process won't brake (but a warning will be logged
             */
-            deferred.resolve(ret.join("\r\n")); // "202 OK\r\nfoo" (drops the final \r\n)
+            this.sendResponse(ret.join("\r\n")); // "202 OK\r\nfoo" (drops the final \r\n)
             cont = true;
         } else {
             this.logger.debug("single-lined response is not ready yet");
@@ -153,9 +162,8 @@ melted_node.prototype.processResponse = function() {
         // we've got an error
         this.logger.warn("[processResponse] I got an error: %s", status);
         this.errors.push(status);
-        this.commands.shift();
         this.response = this.response.substr(status.length + 2);
-        deferred.reject(new Error(status));
+        this.sendResponse(new Error(status), true);
         cont = true;
     } else {
         // I don't know what we have here, but we're never going to be able to process it. Lose it
