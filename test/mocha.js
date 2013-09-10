@@ -317,7 +317,7 @@ describe("fake melted", function() {
         mlt = new melted_node('localhost', 2222);
     });
     after(function(done) {
-        server.close(function() { done() });
+        self.mlt_mock.close(function() { done() });
     });
     describe("--timeouts", function() {
         this.timeout(2200);
