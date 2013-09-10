@@ -351,7 +351,7 @@ melted_node.prototype._connect = function(deferred) {
       amounts of data, with the caveat that the user is required to
       end() their side now.
     */
-    this.server.on('end', (function () {
+    this.server.addListener('end', (function () {
         if (this.pending.length)
             this.logger.error("[connect] Got 'end' but still data pending");
         this.logger.info("[connect] Melted Server connection ended");
@@ -377,7 +377,7 @@ melted_node.prototype._connect = function(deferred) {
       Emitted when an error occurs. The 'close' event will be called
       directly following self event.
     */
-    this.server.on('error', (function(err) {
+    this.server.addListener('error', (function(err) {
         this.logger.error("[connect] Could not connect to Melted Server", err);
         deferred.reject(err);
         this.emit('connection-error', err);
