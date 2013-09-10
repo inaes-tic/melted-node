@@ -404,9 +404,9 @@ melted_node.prototype._cleanup = function() {
 
 melted_node.prototype.close = function(had_error) {
     if (had_error)
-        this.logger.error("[connect] Melted Server connection closed with error");
+        this.logger.error("[close] Melted Server connection closed with error");
     else
-        this.logger.info("[connect] Melted Server connection closed");
+        this.logger.info("[close] Melted Server connection closed");
     this._cleanup();
     this.server.removeAllListeners();
     //    this.server.destroy();
@@ -416,6 +416,7 @@ melted_node.prototype.close = function(had_error) {
 };
 
 melted_node.prototype.disconnect = function() {
+    this.logger.info("[disconnect] Invoked");
     this.started = false;
     var deferred = Q.defer();
     this.connects.take(this._disconnect.bind(this, deferred));
