@@ -328,6 +328,13 @@ describe("fake melted", function() {
             mlt.disconnect().then(function() { done() }).done();
         });
         it("# should timeout after sending a command and waiting 2 seconds", function(done) {
+            mlt.on('response-timeout', function() {
+                mlt.removeAllListeners('response-timeout');
+                done();
+            });
+            mlt.sendCommand("USTA U0");
+        });
+        it("# when timed out, pending commands should fail", function(done) {
             var r = mlt.sendCommand("USTA U0").then(function() {
                 done(new Error("Got a response, and should have timed out!"));
             }).fail(function() {
