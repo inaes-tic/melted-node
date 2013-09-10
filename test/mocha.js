@@ -306,7 +306,7 @@ describe('disconnect', function() {
     });
 });
 
-describe.only("fake melted", function() {
+describe("fake melted", function() {
     var self = this;
     before(function(done) {
         // just create a server that sends a melted "ready" message and then responds to nothing
