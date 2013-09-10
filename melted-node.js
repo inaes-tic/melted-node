@@ -109,7 +109,6 @@ melted_node.prototype.dataReceived = function(data) {
     this.logger.info("[dataReceived] Got: " + data.length + " bytes");
     this.logger.debug("[dataReceived] received data: " + data);
     this.response += data;
-    this.setTimer();
 };
 
 melted_node.prototype.sendResponse = function(response, reject) {
@@ -309,6 +308,7 @@ melted_node.prototype._connect = function(deferred) {
                 this.processResponse();
                 // Once again, this depends on the fact
                 // that the dataReceived listener has been registered first
+                this.server.addListener('data', this.resetTimeout.bind(this));
                 this.server.addListener('data', this.processResponse.bind(this));
                 this.emit('connected');
             }
