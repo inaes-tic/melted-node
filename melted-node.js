@@ -80,6 +80,18 @@ melted_node.prototype.responseTimeout = function() {
         this.server.end();
 };
 
+melted_node.prototype.rejectAll = function() {
+    this.logger.info("[rejectAll] Invoked. this.command(%d);this.pending(%d)", this.commands.length, this.pending.length);
+    this.commands.forEach(function(command) {
+        command[1].reject(new Error("Server Disconnected"));
+    });
+    this.commands = [];
+    this.pending.forEach(function(command) {
+        command[1].reject(new Error("Server Disconnected"));
+    });
+    this.pending = [];
+};
+
 melted_node.prototype.setTimeout = function() {
     this.logger.info('[setTimeout] Invoked');
     if(!this.timer) {
@@ -384,12 +396,18 @@ melted_node.prototype._connect = function(deferred) {
     }).bind(this));
 };
 
+melted_node.prototype._cleanup = function() {
+    this.rejectAll();
+    this.connected = false;
+    this.cancelTimeout();
+};
+
 melted_node.prototype.close = function(had_error) {
     if (had_error)
         this.logger.error("[connect] Melted Server connection closed with error");
     else
         this.logger.info("[connect] Melted Server connection closed");
-    this.connected = false;
+    this._cleanup();
     this.server.removeAllListeners();
     //    this.server.destroy();
     delete this.server;
@@ -408,17 +426,9 @@ melted_node.prototype._disconnect = function(deferred) {
     this.logger.info("[disconnect] Disconnecting from Melted Server");
     this.server.removeAllListeners();
     this.server.once('close', (function(had_error) {
-        this.connected = false;
+        this._cleanup();
         delete this.server;
         deferred.resolve("Server Disconnected");
-        this.commands.forEach(function(command) {
-            command[1].reject(new Error("Server Disconnected"));
-        });
-        this.commands = [];
-        this.pending.forEach(function(command) {
-            command[1].reject(new Error("Server Disconnected"));
-        });
-        this.pending = [];
         this.logger.info("[disconnect] Disconnected from Melted Server");
         this.emit('disconnect');
         this.connects.leave();
