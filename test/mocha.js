@@ -320,7 +320,7 @@ describe("fake melted", function() {
         self.mlt_mock.close(function() { done() });
     });
     describe("--timeouts", function() {
-        this.timeout(2200);
+        this.timeout(3000);
         beforeEach(function(done) {
             mlt.connect().then(function() { done() }).done();
         });
