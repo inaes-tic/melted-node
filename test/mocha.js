@@ -351,5 +351,16 @@ describe("fake melted", function() {
                 done();
             }, 2400);
         });
+        it("# should timeout even if I keep sending commands", function(done) {
+            var ival = setInterval(function() {
+                mlt.sendCommand("USTA U0");
+            }, 200);
+            mlt.on('response-timeout', function() {
+                mlt.removeAllListeners('response-timeout');
+                clearInterval(ival);
+                done();
+            });
+
+        });
     });
 });
