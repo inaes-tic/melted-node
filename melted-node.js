@@ -424,6 +424,11 @@ melted_node.prototype.disconnect = function() {
 };
 
 melted_node.prototype._disconnect = function(deferred) {
+    if(!this.server || !this.connected) {
+        this.logger.info("[disconnect] Was already disconnected");
+        deferred.resolve("Server Disconnected");
+        return this.connects.leave();
+    }
     this.logger.info("[disconnect] Disconnecting from Melted Server");
     this.server.removeAllListeners();
     this.server.once('close', (function(had_error) {
