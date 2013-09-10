@@ -341,5 +341,15 @@ describe("fake melted", function() {
                 done();
             });
         });
+        it("# waiting for two seconds without sending commands should NOT time out", function(done){
+            mlt.on('response-timeout', function() {
+                mlt.removeAllListeners('response-timeout');
+                done(new Error("melted-node sent a timeout event"));
+            });
+            setTimeout(function() {
+                mlt.removeAllListeners('response-timeout');
+                done();
+            }, 2400);
+        });
     });
 });
