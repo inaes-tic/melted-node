@@ -315,6 +315,7 @@ melted_node.prototype._connect = function(deferred) {
                 this.server.addListener('close', this.close.bind(this));
                 this.connected = true;
                 this.connects.leave();
+                this.server.removeAllListeners('timeout');
                 deferred.resolve('connected');
                 this.processQueue();
                 this.processResponse();
@@ -364,6 +365,15 @@ melted_node.prototype._connect = function(deferred) {
       notify that the socket has been idle. The user must manually close
       the connection.
     */
+    this.server.addListener('timeout', (function() {
+        // This listener will be removed after connection is stablished and
+        // confirmed by melted. If it's called, it means socket connection
+        // was stablished, but melted never sent the "ready" message
+        this.logger.error('[connect] The socket connection was stablished, but melted never sent the "ready" message');
+        var err = new Error('Connection timed out');
+        deferred.reject(err);
+        this.emit('connection-error', err);
+    }).bind(this));
 
     /*
       Event: 'drain'#
