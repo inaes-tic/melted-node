@@ -371,6 +371,9 @@ melted_node.prototype._connect = function(deferred) {
         // confirmed by melted. If it's called, it means socket connection
         // was stablished, but melted never sent the "ready" message
         this.logger.error('[connect] The socket connection was stablished, but melted never sent the "ready" message');
+        this.connected = false;
+        this.started = false;
+        this.server.destroy();
         var err = new Error('Connection timed out');
         deferred.reject(err);
         this.emit('connection-error', err);
