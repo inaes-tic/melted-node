@@ -316,6 +316,7 @@ melted_node.prototype._connect = function(deferred) {
                 this.connected = true;
                 this.connects.leave();
                 this.server.removeAllListeners('timeout');
+                this.server.setTimeout(0);
                 deferred.resolve('connected');
                 this.processQueue();
                 this.processResponse();
@@ -374,6 +375,7 @@ melted_node.prototype._connect = function(deferred) {
         deferred.reject(err);
         this.emit('connection-error', err);
     }).bind(this));
+    this.server.setTimeout(500);
 
     /*
       Event: 'drain'#
