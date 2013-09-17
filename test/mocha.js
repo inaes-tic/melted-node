@@ -308,59 +308,93 @@ describe('disconnect', function() {
 
 describe("fake melted", function() {
     var self = this;
-    before(function(done) {
-        // just create a server that sends a melted "ready" message and then responds to nothing
-        self.mlt_mock = net.createServer(function(c) {
-            c.write("100 VTR Ready\r\n");
-        });
-        self.mlt_mock.listen(2222, function() { done() });
-        mlt = new melted_node('localhost', 2222);
-    });
-    after(function(done) {
-        self.mlt_mock.close(function() { done() });
-    });
-    describe("--timeouts", function() {
-        this.timeout(3000);
-        beforeEach(function(done) {
-            mlt.connect().then(function() { done() }).done();
-        });
-        afterEach(function(done) {
-            mlt.disconnect().then(function() { done() }).done();
-        });
-        it("# should timeout after sending a command and waiting 2 seconds", function(done) {
-            mlt.on('response-timeout', function() {
-                mlt.removeAllListeners('response-timeout');
-                done();
+    describe("that accepts connection, but doesn't send 'ready'", function() {
+        before(function(done) {
+            self.mlt_mock = net.createServer(function(c) {
+                self.mlt_mock.clients.push(c);
             });
-            mlt.sendCommand("USTA U0");
+            self.mlt_mock.clients = [];
+            self.mlt_mock.listen(2222, function() { done() });
+            mlt = new melted_node('localhost', 2222);
         });
-        it("# when timed out, pending commands should fail", function(done) {
-            var r = mlt.sendCommand("USTA U0").then(function() {
-                done(new Error("Got a response, and should have timed out!"));
+        after(function(done) {
+            mlt = undefined;
+            self.mlt_mock.close(function() {
+                done()
+            });
+            self.mlt_mock.clients.forEach(function(c) {
+                c.destroy();
+            });
+        });
+        it("-- connect should fail if the 100 VTR Ready line is never sent", function(done) {
+            mlt.connect().then(function() {
+                // fail
+                done(new Error("Connection returned as succeeded"));
             }).fail(function() {
                 done();
+            }).done();
+        });
+    });
+    describe("that sends 'ready'", function() {
+        before(function(done) {
+            // just create a server that sends a melted "ready" message and then responds to nothing
+            self.mlt_mock = net.createServer(function(c) {
+                self.mlt_mock.clients.push(c);
+                c.write("100 VTR Ready\r\n");
+            });
+            self.mlt_mock.clients = [];
+            self.mlt_mock.listen(2222, function() { done() });
+            mlt = new melted_node('localhost', 2222);
+        });
+        after(function(done) {
+            self.mlt_mock.close(function() { done() });
+            self.mlt_mock.clients.forEach(function(c) {
+                c.destroy();
             });
         });
-        it("# waiting for two seconds without sending commands should NOT time out", function(done){
-            mlt.on('response-timeout', function() {
-                mlt.removeAllListeners('response-timeout');
-                done(new Error("melted-node sent a timeout event"));
+        describe("--timeouts", function() {
+            this.timeout(3000);
+            beforeEach(function(done) {
+                mlt.connect().then(function() { done() }).done();
             });
-            setTimeout(function() {
-                mlt.removeAllListeners('response-timeout');
-                done();
-            }, 2400);
-        });
-        it("# should timeout even if I keep sending commands", function(done) {
-            var ival = setInterval(function() {
+            afterEach(function(done) {
+                mlt.disconnect().then(function() { done() }).done();
+            });
+            it("# should timeout after sending a command and waiting 2 seconds", function(done) {
+                mlt.on('response-timeout', function() {
+                    mlt.removeAllListeners('response-timeout');
+                    done();
+                });
                 mlt.sendCommand("USTA U0");
-            }, 200);
-            mlt.on('response-timeout', function() {
-                mlt.removeAllListeners('response-timeout');
-                clearInterval(ival);
-                done();
             });
+            it("# when timed out, pending commands should fail", function(done) {
+                var r = mlt.sendCommand("USTA U0").then(function() {
+                    done(new Error("Got a response, and should have timed out!"));
+                }).fail(function() {
+                    done();
+                });
+            });
+            it("# waiting for two seconds without sending commands should NOT time out", function(done){
+                mlt.on('response-timeout', function() {
+                    mlt.removeAllListeners('response-timeout');
+                    done(new Error("melted-node sent a timeout event"));
+                });
+                setTimeout(function() {
+                    mlt.removeAllListeners('response-timeout');
+                    done();
+                }, 2400);
+            });
+            it("# should timeout even if I keep sending commands", function(done) {
+                var ival = setInterval(function() {
+                    mlt.sendCommand("USTA U0");
+                }, 200);
+                mlt.on('response-timeout', function() {
+                    mlt.removeAllListeners('response-timeout');
+                    clearInterval(ival);
+                    done();
+                });
 
+            });
         });
     });
 });
