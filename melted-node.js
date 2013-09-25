@@ -1,27 +1,31 @@
-var net       = require('net'), 
-    Q         = require('q'), 
-    moment    = require('moment'), 
-    semaphore = require('semaphore'),
-    winston   = require('winston');
+var net       = require('net')
+,   Q         = require('q')
+,   moment    = require('moment')
+,   semaphore = require('semaphore')
+,   winston   = require('winston')
+,   events    = require('events')
+,   util      = require('util')
+,   timers    = require('timers')
+;
+
+var instance_counter = 0;
 
 function melted_node(host, port, logger, timeout) {
-    this.server     = false;
-    this.errors     = [];
-    this.pending    = [];
-    this.connected  = false;
-    this.commands   = [];
-    this.processing = false;
-    this.host       = host;
-    this.port       = port;
-    this.connects   = semaphore(1);
-    this.started    = false;
-    this.responses  = [];
-    this.timeout    = timeout || 2000;
-    this.host       = host || 'localhost';
-    this.port       = port || 5250;
-    this.logger     = logger || new (winston.Logger)({
+    this.server     = false;  // connection to melted
+    this.errors     = [];     // error messages returned by melted
+    this.pending    = [];     // commands not yet sent to melted
+    this.connected  = false;  // true if connection to server has been established
+    this.commands   = [];     // commands already sent to melted, awaiting response
+    this.connects   = semaphore(1);  // manages connection access (for use with .connect and .disconnect)
+    this.response   = '';     // received response text still unprocessed
+    this.started    = false;  // true if connection workflow has started
+    this.timeout    = timeout || 2000;     // timeout time
+    this.timer      = undefined;           // the timer for response timeout
+    this.host       = host || 'localhost'; // melted host address
+    this.port       = port || 5250;        // melted port address
+    this._logger     = logger || new (winston.Logger)({
         transports: [
-            new winston.transports.Console({ 
+            new winston.transports.Console({
                 colorize: true,
                 level: 'info',
                 timestamp: true
@@ -38,187 +42,293 @@ function melted_node(host, port, logger, timeout) {
         ],
         exitOnError: false
     });
+    this._instance = instance_counter++;
+    var self = this;
+    this.logger = {
+        _getArguments: function(args) {
+            var args = Array.prototype.slice.call(args);
+            args[0] = self._instance + ": " + args[0];
+            return args;
+        },
+        error: function() {
+            var args = this._getArguments(arguments);
+            self._logger.error.apply(self._logger, args);
+        },
+        warn: function() {
+            var args = this._getArguments(arguments);
+            self._logger.warn.apply(self._logger, args);
+        },
+        info: function() {
+            var args = this._getArguments(arguments);
+            self._logger.info.apply(self._logger, args);
+        },
+        debug: function() {
+            var args = this._getArguments(arguments);
+            self._logger.debug.apply(self._logger, args);
+        },
+    };
+    events.EventEmitter.call(this);
 };
 
-melted_node.prototype.addPendingData = function(data) {
-    var self = this;
-    if (data.match(/[^\s]/)) {
-        self.pending.push(data);
-        self.logger.warn("[addPendingData] Got " + self.pending.length + " data pending.");
-        self.logger.warn("[addPendingData] Data: " + data);
+util.inherits(melted_node, events.EventEmitter);
+
+melted_node.prototype.responseTimeout = function() {
+    this.emit('response-timeout');
+    var error = new Error("Melted Server connection timed out");
+    this.logger.error(error.message);
+    if (this.connected)
+        this.server.end();
+};
+
+melted_node.prototype.rejectAll = function() {
+    this.logger.info("[rejectAll] Invoked. this.command(%d);this.pending(%d)", this.commands.length, this.pending.length);
+    this.commands.forEach(function(command) {
+        command[1].reject(new Error("Server Disconnected"));
+    });
+    this.commands = [];
+    this.pending.forEach(function(command) {
+        command[1].reject(new Error("Server Disconnected"));
+    });
+    this.pending = [];
+};
+
+melted_node.prototype.setTimeout = function() {
+    this.logger.info('[setTimeout] Invoked');
+    if(!this.timer) {
+        this.logger.debug('setting timeout for %d milliseconds', this.timeout);
+        this.timer = setTimeout(this.responseTimeout.bind(this), this.timeout);
     }
 };
 
-melted_node.prototype.processQueue = function() {
-    var self = this;
-    self.logger.debug("[processQueue] Invoked"); 
-
-    if (!self.processing)
-        self.processing = true;
-    
-    self.connects.take(function() {
-        if (!self.connected) {
-            self.connects.leave();
-            return;
-        }
-
-        var command = self.commands.shift();
-
-        if (command !== undefined) {
-            self.logger.debug("[processQueue] Processing command: " + command[0]);
-            var result = self._sendCommand(command[0], command[1], command[2]);
-
-            result.then(function(val) {
-                self.processQueue();
-                return val;
-            }).fail(function(error) {
-                var err = new Error("[processQueue] Error processing command: " + command[0] + " [" + error + "]");
-                self.logger.error(err.message);
-                self.errors.push(err);
-                self.processQueue();
-                throw error;
-            }).fin(self.connects.leave);		
-        } else {
-            self.logger.debug("[processQueue] Nothing else to process");
-            self.processing = false;
-            self.connects.leave();
-        }
-    });
+melted_node.prototype.resetTimeout = function() {
+    this.logger.info('[resetTimeout] Invoked');
+    if(this.timer) {
+        this.logger.debug('resetting timer');
+        timers.active(this.timer);
+    }
 };
 
-melted_node.prototype.addCommandToQueue = function(command, expected) {
-    var self = this;
-    self.logger.debug("[addCommandToQueue] Invoked for command: " + command + ", expected: " + expected);
+melted_node.prototype.cancelTimeout = function() {
+    this.logger.info('[cancelTimeout] Invoked');
+    if(this.timer) {
+        this.logger.debug('canceling timeout');
+        clearTimeout(this.timer);
+        this.timer = undefined;
+    }
+};
+
+melted_node.prototype.dataReceived = function(data) {
+    this.logger.info("[dataReceived] Got: " + data.length + " bytes");
+    this.logger.debug("[dataReceived] received data: " + data);
+    this.response += data;
+};
+
+melted_node.prototype.sendResponse = function(response, reject) {
+    var command = this.commands.shift();
+    this.logger.debug("responding to %s (reject: %s)", command[0], reject);
+    if(reject) {
+        this.emit('command-error', response, command[0]);
+        command[1].reject(response);
+    } else {
+        this.emit('command-response', response, command[0]);
+        command[1].resolve(response);
+    }
+};
+
+melted_node.prototype.processResponse = function() {
+    this.logger.info('[processResponse] try to process response');
+    this.logger.debug('[processResponse] response to process: "%s"', this.response);
+    this.logger.debug("pending commands length: %d", this.commands.length);
+    if(this.response.length && !this.commands.length) {
+        this.logger.warn("I got a response, but no pending commands. I'll ignore it");
+        this.response = '';
+    }
+    if(!this.commands.length) {
+        // nothing to do
+        this.logger.info("[processResponse] no pending commands");
+        return;
+    }
+    var spl = this.response.split("\r\n", 2);
+    this.logger.debug("splitted length: %d", spl.length);
+    if(spl[1] === undefined) {
+        // no newlines yet, wait for next packet
+        this.logger.info("[processResponse] status line not completely received yet");
+        return;
+    }
+
+    var status = spl[0];
+    this.logger.debug("Processing status: %s", status);
+
+    var com = this.commands[0];
+    this.logger.info('[processResponse] processing response for command "%s"', com[0]);
+    var deferred = com[1];
+    var cont = false;
+    if(status == "200 OK") {
+        // Just an OK message.
+        this.logger.debug("it's an OK");
+        this.response = this.response.substr(status.length + 2);
+        this.sendResponse(status);
+        cont = true;
+    } else if(status == "201 OK") {
+        this.logger.debug("multi-lined response");
+        // multi-lined response. wait for "\r\n\r\n"
+        var splitted = this.response.split("\r\n\r\n");
+        if(splitted[1] !== undefined) {
+            this.logger.debug("multi-lined response is ready");
+            // "201 OK\r\nfoo\r\n\r\n".split("\r\n\r\n") ==> ['201 OK\r\nfoo', ''], so ...split(..)[1] === undefined is false
+            var ret = splitted[0];
+            this.response = splitted.slice(1).join("\r\n\r\n");
+            this.sendResponse(ret);
+            cont = true;
+        } else {
+            this.logger.debug("multi-lined response is not ready yet");
+        }
+    } else if(status == "202 OK") {
+        this.logger.debug("single-lined response");
+        // one-line response. wait for "\r\n"
+        var splitted = this.response.split("\r\n");
+        if(splitted[2] !== undefined) {
+            this.logger.debug("single-lined response is ready");
+            // "202 OK\r\nfoo\r\n".split("\r\n") ==> ['202 OK', 'foo', ''], so ...split(..)[2] === undefined is false
+            // so I've got the whole response
+            var ret = splitted.slice(0, 2);  // ['202 OK', 'foo']
+            // re-join the rest of the buffer
+            this.response = splitted.slice(2).join("\r\n");
+            /* so in the case we had "202 OK\r\nfoo\r\nbar", this will become "bar".
+               IF we had "202 OK\r\nfoo\r\n\r\n", this will become "\r\n",
+               but this should *not* happen. In any case, the "header" of the
+               next response will not be recognized and will be dropped, so the
+               process won't brake (but a warning will be logged
+            */
+            this.sendResponse(ret.join("\r\n")); // "202 OK\r\nfoo" (drops the final \r\n)
+            cont = true;
+        } else {
+            this.logger.debug("single-lined response is not ready yet");
+        }
+    } else if(status.match(/^[45][0-9][0-9]/)) {
+        // we've got an error
+        this.logger.warn("[processResponse] I got an error: %s", status);
+        this.errors.push(status);
+        this.response = this.response.substr(status.length + 2);
+        this.sendResponse(new Error(status), true);
+        cont = true;
+    } else {
+        // I don't know what we have here, but we're never going to be able to process it. Lose it
+        this.logger.warn("I got an unknown beginning of response. I'm ignoring it: \"%s\"", status);
+        // drop the offending line
+        this.response = this.response.substr(status.length + 2);
+        cont = true;
+    }
+
+    this.logger.debug("if cont(%s) and response(%d), continue", ''+cont, this.response.length);
+    // if we processed something and still have data to process, have another go
+    if(cont && this.response) {
+        this.logger.debug("calling processResponse again");
+        setTimeout(this.processResponse.bind(this), 0);
+    }
+    this.logger.info("remaining data length: %d", this.response.length);
+    this.logger.debug("resulting buffer: %s", this.response);
+    if(!this.commands.length)
+        this.cancelTimeout();
+};
+
+melted_node.prototype.processQueue = function() {
+    this.logger.debug("[processQueue] called with %d commands pending", this.pending.length);
+    if(!this.connected) {
+        this.logger.debug("[processQueue] ignored, not connected");
+        return;
+    }
+    this.logger.info("[processQueue] processing. %d commands pending", this.pending.length);
+    while(this.pending.length) {
+        var com = this.pending.shift();
+        var command = com[0];
+        this.logger.debug("sending %s", command);
+        this.commands.push(com);
+        this.server.write(command + "\r\n");
+        this.logger.debug("timer: %s", '' + this.timer);
+        this.setTimeout();
+    }
+    this.logger.info("[processQueue] now waiting responses for %d commands", this.commands.length);
+};
+
+melted_node.prototype.addCommandToQueue = function(command) {
+    this.logger.debug("[addCommandToQueue] Invoked for command: " + command);
     var com = [];
     var result = Q.defer();
     com[0] = command;
-    com[1] = expected;
-    com[2] = result;
-    self.commands.push(com);
+    com[1] = result;
+    this.pending.push(com);
+
+    if (!this.connected) {
+        if (!this.started) {
+            this.connect();
+        }
+    }
+    this.processQueue();
     return result.promise;
 };
 
-melted_node.prototype._sendCommand = function(command, expected, deferred) {
-    var self = this;
-    self.logger.debug("[_sendCommand] Sending command: " + command);
-
-    self.server.write(command + "\n");
-
-    var aux = command.split("\ ");
-
-    deferred.resolve(self.expect(expected, aux[0]));
-
-    return deferred.promise;
-};
-
-melted_node.prototype.expect = function(expected, command, prefix) {
-    var self = this;
-    self.logger.debug("[expect] Invoked to expect: " + expected + " for command:" + command);
-
-    var deferred = Q.defer();
-    var response = {};
-    response.id = moment();
-    response.deferred = deferred;
-    response.processed = false;
-    self.responses.push(response);
-    setTimeout(self.checkTimeout.bind(self, response), self.timeout);
-    self.server.removeAllListeners('data');
-    self.server.once('data', function(data) {
-        response.processed = true;
-        self.server.addListener('data', self.addPendingData);
-        self.logger.debug("[expect] Received: " + data + " Expected: " + expected);
-        /* FIX for Issue 1 */
-        var end_resp = false;
-        if (prefix !== undefined) 
-            data = prefix + "\r" + "\n" + data;
-        var datax = data.split("\r\n");
-        var i = 0;
-        var sep = "";
-        for(i = 0, data = "", sep = ""; i < datax.length; i++) {
-            if (datax[i] !== "") { 
-                data = data + sep + datax[i]; 
-                sep = "\r" + "\n"; 
-            } 
-            if (datax[i] === "402 Argument missing") { 
-                end_resp =  true; 
-            } 
-        }
-        /* END FIX for Issue 1 */
-        var resp = data.replace(/\r\n/g, "");
-        self.logger.debug("[expect] Formatted Response: " + resp );
-        if (resp.length === 0) {
-            self.logger.debug("[expect] Received empty string, retrying. with prefix: " + prefix );
-            deferred.resolve(self.expect(expected, command, prefix));
-        } else {
-            if (prefix === undefined) {
-                if (resp.substring(0, expected.length) === expected) {
-                    self.logger.debug("[expect] Received expected response");
-                    deferred.resolve(self.expect(expected, command, data));
-                } else {
-                    self.logger.error("[expect] Expected '" + expected + "' but got '" + resp + "' !");
-                    deferred.resolve(self.expect(expected, command, data));
-                }
-                //HACK: to know when the response ends, we send a fake command and wait for its response
-                self.server.write("get\n");
-            } else {
-                //HACK: here we read the response of the fake command sent above to see if response ended or not
-                if (resp === "402 Argument missing" || end_resp ) {
-                    //HACK: if we received the expected response to the fake command, response of the real command ended
-                    var pfx = prefix.replace(/\r\n/g, "");
-                    if ((pfx.substring(0, 1) === "2") || (pfx === "100 VTR Ready"))
-                        deferred.resolve( data );
-                    else
-                        deferred.reject( data );
-                } else {
-                    //HACK: if response is other than the expected for the fake command, we continue listening
-                    deferred.resolve(self.expect(expected, command, data));
-                }
-            }
-        }
-    });
-    return deferred.promise;
-};
-
 melted_node.prototype.connect = function() {
-    var self = this;
-    if (!self.started)
-        self.started = true;
+    if (!this.started)
+        this.started = true;
     var deferred = Q.defer();
-    self.connects.take(self._connect.bind(self, deferred));
+    this.connects.take(this._connect.bind(this, deferred));
     return deferred.promise;
 };
 
 melted_node.prototype._connect = function(deferred) {
-    var self = this;
-    self.logger.info("[connect] Invoked");
-    
-    if (self.connected) {
-        self.logger.info("[connect] Server already connected");
+    this.logger.info("[connect] Invoked");
+
+    if (this.connected) {
+        this.logger.info("[connect] Server already connected");
         deferred.resolve("Server already connected");
-        self.connects.leave();
+        this.connects.leave();
         return;
     }
-    
-    self.server = new net.createConnection(this.port, this.host);
-    self.server.setEncoding('ascii');
-    self.server.setNoDelay(true);
+    this.emit('start-connection');
+
+    this.server = new net.createConnection(this.port, this.host);
+    this.server.setEncoding('ascii');
+    this.server.setNoDelay(true);
 
     /*
       Event: 'connect'#
       Emitted when a socket connection is successfully established. See connect().
     */
-    self.server.on("connect", function() {
-        self.logger.info("[connect] Connecting to Melted Server..." );
-        deferred.resolve(self.expect("100 VTR Ready").then(function() {
-            self.logger.info("[connect] Connected to Melted Server" );
-            self.server.removeAllListeners('close');
-            self.server.addListener('close', self.close.bind(self));
-            self.connected = true;
-//            self.connecting = false;
-            self.connects.leave();
-            self.processQueue();
-        }));
-    });
+    this.server.addListener("connect", (function() {
+        this.logger.info("[connect] Connecting to Melted Server..." );
+        // this listener will wait until the connection got a "100 VTR Ready" string,
+        // answer to the 'connect' request, and go on. This depends on the fact
+        // that the dataReceived listener has been registered first
+        var readyListener = (function() {
+            var readyStr = "100 VTR Ready\r\n";
+            var match = this.response.match(readyStr);
+            if(match) {
+                if(match.index != 0) {
+                    // got a match, but it's not first, weird
+                    this.logger.warn("Got a match for ready string, but was not the first we got from the server: (%s)", this.response);
+                    this.response = this.response.substr(match.index);
+                }
+                this.response = this.response.replace(readyStr, '');
+                this.server.removeListener('data', readyListener)
+                this.server.removeAllListeners('close');
+                this.server.addListener('close', this.close.bind(this));
+                this.connected = true;
+                this.connects.leave();
+                this.server.removeAllListeners('timeout');
+                this.server.setTimeout(0);
+                deferred.resolve('connected');
+                this.processQueue();
+                this.processResponse();
+                // Once again, this depends on the fact
+                // that the dataReceived listener has been registered first
+                this.server.addListener('data', this.resetTimeout.bind(this));
+                this.server.addListener('data', this.processResponse.bind(this));
+                this.emit('connected');
+            }
+        }).bind(this);
+        this.server.addListener('data', readyListener);
+    }).bind(this));
 
     /*
       Event: 'data'#
@@ -230,7 +340,7 @@ melted_node.prototype._connect = function(deferred) {
       Note that the data will be lost if there is no listener when a
       Socket emits a 'data' event.
     */
-    self.server.addListener('data', self.addPendingData.bind(self));
+    this.server.addListener('data', this.dataReceived.bind(this));
 
     /*
       Event: 'end'#
@@ -243,11 +353,12 @@ melted_node.prototype._connect = function(deferred) {
       amounts of data, with the caveat that the user is required to
       end() their side now.
     */
-    self.server.on('end', function () {
-        if (self.pending.length)
-            self.logger.error("[connect] Got 'end' but still data pending");
-        self.logger.info("[connect] Melted Server connection ended");
-    });
+    this.server.addListener('end', (function () {
+        if (this.pending.length)
+            this.logger.error("[connect] Got 'end' but still data pending");
+        this.logger.info("[connect] Melted Server connection ended");
+        this.emit('disconnect');
+    }).bind(this));
 
     /*
       Event: 'timeout'#
@@ -255,6 +366,19 @@ melted_node.prototype._connect = function(deferred) {
       notify that the socket has been idle. The user must manually close
       the connection.
     */
+    this.server.addListener('timeout', (function() {
+        // This listener will be removed after connection is stablished and
+        // confirmed by melted. If it's called, it means socket connection
+        // was stablished, but melted never sent the "ready" message
+        this.logger.error('[connect] The socket connection was stablished, but melted never sent the "ready" message');
+        this.connected = false;
+        this.started = false;
+        this.server.destroy();
+        var err = new Error('Connection timed out');
+        deferred.reject(err);
+        this.emit('connection-error', err);
+    }).bind(this));
+    this.server.setTimeout(500);
 
     /*
       Event: 'drain'#
@@ -268,10 +392,11 @@ melted_node.prototype._connect = function(deferred) {
       Emitted when an error occurs. The 'close' event will be called
       directly following self event.
     */
-    self.server.on('error', function(err) {
-        self.logger.error("[connect] Could not connect to Melted Server", err);
+    this.server.addListener('error', (function(err) {
+        this.logger.error("[connect] Could not connect to Melted Server", err);
         deferred.reject(err);
-    });
+        this.emit('connection-error', err);
+    }).bind(this));
 
     /*
       Event: 'close'#
@@ -280,102 +405,66 @@ melted_node.prototype._connect = function(deferred) {
       a boolean which says if the socket was closed due to a
       transmission error.
     */
-   self.server.once('close', function(had_error) {
-       self.close(had_error);
-       self.connects.leave();
-   });
+    this.server.once('close', (function(had_error) {
+        this.close(had_error);
+        this.connects.leave();
+    }).bind(this));
+};
+
+melted_node.prototype._cleanup = function() {
+    this.rejectAll();
+    this.connected = false;
+    this.cancelTimeout();
 };
 
 melted_node.prototype.close = function(had_error) {
-   var self = this;
     if (had_error)
-        self.logger.error("[connect] Melted Server connection closed with error");
+        this.logger.error("[close] Melted Server connection closed with error");
     else
-        self.logger.info("[connect] Melted Server connection closed");
-    self.connected = false;
-    self.server.removeAllListeners();
-//    self.server.destroy();
-    delete self.server;
-    setTimeout(self.connect.bind(self), 500);
+        this.logger.info("[close] Melted Server connection closed");
+    this._cleanup();
+    this.server.removeAllListeners();
+    //    this.server.destroy();
+    delete this.server;
+    this.emit('reconnect', had_error);
+    setTimeout(this.connect.bind(this), 500);
 };
 
 melted_node.prototype.disconnect = function() {
-    var self = this;
+    this.logger.info("[disconnect] Invoked");
+    this.started = false;
     var deferred = Q.defer();
-    self.connects.take(self._disconnect.bind(self, deferred));
+    this.connects.take(this._disconnect.bind(this, deferred));
     return deferred.promise;
 };
 
 melted_node.prototype._disconnect = function(deferred) {
-    var self = this;
-    
-    self.logger.info("[disconnect] Disconnecting from Melted Server");
-    self.server.removeAllListeners();
-    self.server.once('close', function(had_error) {
-        self.connected = false;
-        delete self.server;
+    if(!this.server || !this.connected) {
+        this.logger.info("[disconnect] Was already disconnected");
         deferred.resolve("Server Disconnected");
-        self.logger.info("[disconnect] Disconnected from Melted Server");
-        self.connects.leave();
-    });
-    self.server.destroy();
+        return this.connects.leave();
+    }
+    this.logger.info("[disconnect] Disconnecting from Melted Server");
+    this.server.removeAllListeners();
+    this.server.once('close', (function(had_error) {
+        this._cleanup();
+        delete this.server;
+        deferred.resolve("Server Disconnected");
+        this.logger.info("[disconnect] Disconnected from Melted Server");
+        this.emit('disconnect');
+        this.connects.leave();
+    }).bind(this));
+    this.server.destroy();
 };
 
-melted_node.prototype.checkTimeout= function(resp) {
-    var self = this;
-    
-    var timeout = true;
-    var x = -1;
-    var index = -1;
-    self.responses.forEach(function(item) {
-        x++;
-        if (item.id === resp.id) {
-            timeout = !item.processed;
-            index = x;
-        }
-    });
-    if (index >= 0)
-        self.responses.splice(index, 1);
-    if (timeout) {
-        var error = new Error("[timeout] Melted Server connection timed out");
-        self.logger.error(error.message);
-        resp.deferred.reject(error);
-        if (self.connected)
-            self.server.end();
-    }
-};
+melted_node.prototype.sendCommand = function(command) {
+    this.logger.debug("[sendPromisedCommand] Invoked for command: " + command);
 
-melted_node.prototype.sendPromisedCommand = function(command, expected) {
-    var self = this;
-    self.logger.debug("[sendPromisedCommand] Invoked for command: " + command + ", expected: " + expected);
-
-    var result = self.addCommandToQueue(command, expected);
-
-    if (!self.connected) { 
-        if (!self.started)
-            self.connect();
-    } else if (!self.processing) {
-        self.processQueue();
-    }
+    var result = this.addCommandToQueue(command);
 
     return result;
 };
 
-melted_node.prototype.sendCommand = function(command, expected, onSuccess, onError) {
-    var self = this;
-    self.logger.debug("[sendCommand] Invoked for command: " + command + ", expected: " + expected);
-
-    var result = self.addCommandToQueue(command, expected);
-    result.then(onSuccess, onError).done();
-
-    if (!self.connected) { 
-        if (!self.started)
-            self.connect();
-    } else if (!self.processing) {
-        self.processQueue();
-    }
-};
-    
 exports = module.exports = function(host, port, logger, timeout) {
     var mlt = new melted_node(host, port, logger, timeout);
     return mlt;
